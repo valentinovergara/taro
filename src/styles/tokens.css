@@ -1,0 +1,110 @@
+/* Taro · Soft Cosmic — Playful Mysticism
+   Tokens semánticos para tema claro y oscuro. */
+:root {
+  color-scheme: light;
+  /* Superficies */
+  --bg: #fbf8f3;
+  --bg-tint: #f6f0f8;
+  --surface: #ffffff;
+  --surface-2: #f7f2ec;
+  --surface-glass: rgb(255 255 255 / 0.72);
+  --line: rgb(31 26 43 / 0.08);
+  --line-strong: rgb(31 26 43 / 0.16);
+  /* Tinta (AA sobre --bg y --surface) */
+  --ink: #1f1a2b;
+  --ink-2: #4f4860;
+  --ink-3: #6b6479;
+  --on-accent: #1f1a2b;
+
+  /* Identidades */
+  --valentino: #b58ce7;
+  --valentino-ink: #6a3fb0;
+  --valentino-soft: #efe4fb;
+  --diego: #69cda6;
+  --diego-ink: #1c7552;
+  --diego-soft: #dcf4ea;
+  --acc: var(--valentino);
+  --acc-ink: var(--valentino-ink);
+  --acc-soft: var(--valentino-soft);
+
+  /* Palos */
+  --copas: #f5a9ce;
+  --pentaculos: #f3d375;
+  --espadas: #94bff2;
+  --bastos: #f7ac87;
+  --mayor: #be9aea;
+
+  /* Atmósfera */
+  --atmo: radial-gradient(120% 90% at 0% 0%, #ffe6d6 0%, transparent 55%),
+          radial-gradient(90% 80% at 100% 10%, #eadcff 0%, transparent 60%),
+          radial-gradient(90% 90% at 60% 100%, #d9f3ea 0%, transparent 60%);
+  --pearl: linear-gradient(135deg, #ffe9f3 0%, #f1e6ff 35%, #e3f4ff 65%, #e6fbf1 100%);
+
+  /* Forma */
+  --r-sm: 12px;
+  --r: 16px;
+  --r-md: 20px;
+  --r-lg: 24px;
+  --r-pill: 999px;
+  --shadow-1: 0 1px 2px rgb(31 26 43 / 0.04), 0 4px 14px -6px rgb(31 26 43 / 0.10);
+  --shadow-2: 0 2px 6px rgb(31 26 43 / 0.05), 0 18px 40px -16px rgb(31 26 43 / 0.20);
+  --shadow-card: 0 1px 2px rgb(31 26 43 / 0.10), 0 10px 22px -12px rgb(31 26 43 / 0.35);
+
+  /* Tipografía */
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fs-hero: clamp(40px, 9vw, 64px);
+  --fs-h1: clamp(28px, 5vw, 40px);
+  --fs-h2: 22px;
+  --fs-body: 16px;
+  --fs-sm: 14px;
+  --fs-xs: 13px;
+
+  /* Movimiento */
+  --t-fast: 180ms;
+  --t: 220ms;
+  --t-slow: 250ms;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+
+  --sidebar: 252px;
+  --nav-h: 76px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+
+[data-who='diego'] { --acc: var(--diego); --acc-ink: var(--diego-ink); --acc-soft: var(--diego-soft); }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #14111b;
+    --bg-tint: #1a1624;
+    --surface: #1f1a2a;
+    --surface-2: #262033;
+    --surface-glass: rgb(31 26 42 / 0.72);
+    --line: rgb(255 255 255 / 0.08);
+    --line-strong: rgb(255 255 255 / 0.16);
+    --ink: #f4eff8;
+    --ink-2: #cbc2d8;
+    --ink-3: #a79eb7;
+    --valentino-ink: #d2b6f5;
+    --valentino-soft: #2e2442;
+    --diego-ink: #8fe0c0;
+    --diego-soft: #1d3029;
+    --atmo: radial-gradient(120% 90% at 0% 0%, #3a2632 0%, transparent 55%),
+            radial-gradient(90% 80% at 100% 10%, #2d2347 0%, transparent 60%),
+            radial-gradient(90% 90% at 60% 100%, #1b3530 0%, transparent 60%);
+    --pearl: linear-gradient(135deg, #3a2533 0%, #2c2342 35%, #1f2d40 65%, #1c3530 100%);
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 14px -6px rgb(0 0 0 / 0.5);
+    --shadow-2: 0 2px 6px rgb(0 0 0 / 0.3), 0 18px 40px -16px rgb(0 0 0 / 0.7);
+  }
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #14111b; --bg-tint: #1a1624; --surface: #1f1a2a; --surface-2: #262033; --surface-glass: rgb(31 26 42 / 0.72);
+  --line: rgb(255 255 255 / 0.08); --line-strong: rgb(255 255 255 / 0.16);
+  --ink: #f4eff8; --ink-2: #cbc2d8; --ink-3: #a79eb7;
+  --valentino-ink: #d2b6f5; --valentino-soft: #2e2442; --diego-ink: #8fe0c0; --diego-soft: #1d3029;
+  --atmo: radial-gradient(120% 90% at 0% 0%, #3a2632 0%, transparent 55%), radial-gradient(90% 80% at 100% 10%, #2d2347 0%, transparent 60%), radial-gradient(90% 90% at 60% 100%, #1b3530 0%, transparent 60%);
+  --pearl: linear-gradient(135deg, #3a2533 0%, #2c2342 35%, #1f2d40 65%, #1c3530 100%);
+}

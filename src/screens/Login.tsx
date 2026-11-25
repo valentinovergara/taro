@@ -29,7 +29,7 @@ export function Login() {
           </form>
         ) : (
           <form onSubmit={verify}>
-            <p>Te enviamos un enlace y un código a <b>{email}</b>. Abre el enlace o escribe el código aquí.</p>
+            <p>Te enviamos un enlace a <b>{email}</b>. Ábrelo en este mismo dispositivo para entrar. Si el correo trae un código de 6 dígitos, también puedes escribirlo aquí.</p>
             <label className="field">Código<input inputMode="numeric" autoComplete="one-time-code" value={code} onChange={e => setCode(e.target.value)} /></label>
             <button className="btn btn-primary btn-block" disabled={busy || !code}>Entrar</button>
             <button type="button" className="btn btn-ghost btn-block" onClick={() => setStep('email')}>Usar otro correo</button>

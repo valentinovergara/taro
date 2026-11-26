@@ -17,6 +17,8 @@ const P: Record<string, ReactNode> = {
   flip: <><path d="M7 4l-3 3 3 3" /><path d="M4 7h11a5 5 0 0 1 0 10h-3" /></>,
   user: <><circle cx="12" cy="8.5" r="3.5" /><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" /></>,
   out: <><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" /><path d="M10 8l-4 4 4 4M6 12h10" /></>,
+  chart: <><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4" /><path d="M12 3.5v4.5M12 16v4.5M3.5 12H8M16 12h4.5" /></>,
+  shuffle: <><path d="M4 7h3c4 0 6 10 10 10h3M4 17h3c1.6 0 2.8-1.4 3.8-3.2M14.2 10.2C15.2 8.4 16.4 7 18 7h2" /><path d="M18 4.5L20.5 7 18 9.5M18 14.5l2.5 2.5-2.5 2.5" /></>,
   link: <><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></>,
 };
 export function Icon({ name, size = 22 }: { name: keyof typeof P | string; size?: number }) {

@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react';
 import type { Ctx } from '../App';
 import { CARDS, posOf, validCards } from '../lib/tarot';
-import { natalAdvice, PLANET_GLYPH, PLANETS, resonance, SIGN_GLYPH, SIGNS, sky, transitFor } from '../lib/astro';
+import { PLANET_GLYPH, resonance, SIGN_GLYPH, sky, transitFor } from '../lib/astro';
 import type { Placement } from '../lib/types';
 import { Character } from '../components/Character';
 import { TarotCard, Icon } from '../components/ui';
-import { repo } from '../lib/repo';
 import { todayIso } from './Today';
 
 const pd = (s: string) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
@@ -16,7 +15,6 @@ export function Sky({ ctx }: { ctx: Ctx }) {
   const r = ctx.readings.find(x => x.id === sel) || ctx.readings[0] || null;
   const date = r?.date || todayIso();
   const s = useMemo(() => sky(date, N), [date, N]);
-  const adv = useMemo(() => natalAdvice(N), [N]);
   const big3 = ['Sol', 'Luna', 'Ascendente'].map(p => N.find(n => n[0] === p)).filter(Boolean) as Placement[];
 
   return (
@@ -78,38 +76,11 @@ export function Sky({ ctx }: { ctx: Ctx }) {
         </section>
       </div>
 
-      <section className="natal-sec">
-        <div className="section-head"><h2 className="h2">Carta natal</h2></div>
-        {N.length > 0 && <div className="natal-chips">{N.map(n => <span key={n[0]} className="chip chip-soft"><b>{PLANET_GLYPH[n[0]]}</b> {n[0]} en {n[1]}{n[2] && n[0] !== 'Ascendente' ? ` · C${n[2]}` : ''}</span>)}</div>}
-        {adv.length > 0 && <div className="natal-adv">{adv.map(a => <article key={a.area} className="panel"><h3>{a.area}</h3><p className="fine">{a.basis}</p><p>{a.text}</p><p className="tip">{a.tip}</p></article>)}</div>}
-        {ctx.isMine && <NatalEditor ctx={ctx} />}
-      </section>
+      <button type="button" className="natal-link" onClick={() => ctx.go('carta')}>
+        <Character kind="sun" size={72} aura={false} />
+        <span><b>Carta natal</b><span className="muted">{N.length ? 'Tu rueda, tus casas y consejos según tu carta.' : 'Calcúlala con tu fecha, hora y lugar de nacimiento.'}</span></span>
+        <Icon name="right" />
+      </button>
     </div>
-  );
-}
-
-function NatalEditor({ ctx }: { ctx: Ctx }) {
-  const init = Object.fromEntries(PLANETS.map(p => { const n = (ctx.viewed.natal || []).find(x => x[0] === p); return [p, { s: n?.[1] || '', h: n?.[2] ? String(n[2]) : '' }]; }));
-  const [v, setV] = useState<Record<string, { s: string; h: string }>>(init);
-  const [msg, setMsg] = useState('');
-  const save = async () => {
-    const natal: Placement[] = PLANETS.filter(p => v[p].s).map(p => [p, v[p].s, v[p].h ? Math.min(12, Math.max(1, +v[p].h)) : '']);
-    try { await repo.saveProfile({ natal }); setMsg('Carta guardada.'); await ctx.refresh(); } catch { setMsg('No se pudo guardar.'); }
-  };
-  return (
-    <details className="natal-edit" open={!(ctx.viewed.natal || []).length}>
-      <summary><Icon name="edit" size={18} />{(ctx.viewed.natal || []).length ? 'Editar mi carta natal' : 'Agrega tu carta natal'}</summary>
-      <p className="fine">Copia los signos y casas de tu app de astrología (por ejemplo, Co-Star).</p>
-      <div className="natal-form">
-        {PLANETS.map(p => (
-          <div key={p} className="natal-row">
-            <span>{p}</span>
-            <select aria-label={`Signo de ${p}`} value={v[p].s} onChange={e => setV({ ...v, [p]: { ...v[p], s: e.target.value } })}><option value="">—</option>{SIGNS.map(s => <option key={s}>{s}</option>)}</select>
-            <input aria-label={`Casa de ${p}`} inputMode="numeric" placeholder="Casa" value={v[p].h} onChange={e => setV({ ...v, [p]: { ...v[p], h: e.target.value.replace(/\D/g, '').slice(0, 2) } })} />
-          </div>
-        ))}
-      </div>
-      <button className="btn btn-primary" onClick={save}>Guardar carta</button> <span className="fine" aria-live="polite">{msg}</span>
-    </details>
   );
 }

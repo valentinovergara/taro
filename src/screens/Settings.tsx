@@ -12,6 +12,7 @@ export function Settings({ ctx }: { ctx: Ctx }) {
   const [context, setContext] = useState(ctx.snap.context);
   const [msg, setMsg] = useState('');
   const [copied, setCopied] = useState('');
+  const [pw, setPw] = useState(''); const [pwMsg, setPwMsg] = useState('');
   const base = window.location.origin + window.location.pathname;
 
   async function save() {
@@ -20,6 +21,11 @@ export function Settings({ ctx }: { ctx: Ctx }) {
       await repo.saveContext(context);
       await ctx.refresh(); setMsg('Guardado.');
     } catch { setMsg('No se pudo guardar.'); }
+  }
+  async function savePw(e: React.FormEvent) {
+    e.preventDefault(); setPwMsg('');
+    if (pw.length < 8) { setPwMsg('Mínimo 8 caracteres.'); return; }
+    try { await auth.setPassword(pw); setPw(''); setPwMsg('Contraseña guardada. Ya puedes entrar con tu correo y esta contraseña.'); } catch { setPwMsg('No se pudo guardar la contraseña.'); }
   }
   const copy = async (text: string, key: string) => { try { await navigator.clipboard.writeText(text); setCopied(key); } catch { setCopied(''); } };
 
@@ -48,7 +54,19 @@ export function Settings({ ctx }: { ctx: Ctx }) {
           {ctx.snap.members.map(m => (
             <div key={m.id} className="link-row"><Avatar name={m.display_name} accent={m.accent} size={28} /><code>{base}#/{m.handle}</code><button className="icon-btn" aria-label={`Copiar link de ${m.display_name}`} onClick={() => copy(`${base}#/${m.handle}`, m.id)}><Icon name={copied === m.id ? 'sparkle' : 'link'} size={18} /></button></div>
           ))}
-          {repo.mode === 'live' && <button className="btn btn-ghost" style={{ marginTop: 24 }} onClick={() => auth.signOut()}><Icon name="out" size={18} />Cerrar sesión</button>}
+          <h3 style={{ marginTop: 24 }}>Carta natal</h3>
+          <p className="muted">{me.meta?.birth ? `${me.meta.birth.date}${me.meta.birth.time ? ' · ' + me.meta.birth.time : ''} · ${me.meta.birth.place}` : 'Aún no registras tu fecha, hora y lugar de nacimiento.'}</p>
+          <button className="btn btn-ghost btn-sm" onClick={() => ctx.go('carta', me.handle)}><Icon name="chart" size={18} />{me.meta?.birth ? 'Ver o editar mi carta' : 'Calcular mi carta natal'}</button>
+          {repo.mode === 'live' && <>
+            <h3 style={{ marginTop: 24 }}>Contraseña</h3>
+            <form onSubmit={savePw} className="pw-form">
+              <input type="text" name="username" autoComplete="username" value={me.handle} readOnly hidden />
+              <label className="field">Nueva contraseña<input type="password" autoComplete="new-password" minLength={8} value={pw} onChange={e => setPw(e.target.value)} /></label>
+              <button className="btn btn-sm">Guardar contraseña</button>
+              <p className="fine" aria-live="polite">{pwMsg}</p>
+            </form>
+            <button className="btn btn-ghost" style={{ marginTop: 16 }} onClick={() => auth.signOut()}><Icon name="out" size={18} />Cerrar sesión</button>
+          </>}
         </section>
       </div>
     </div>

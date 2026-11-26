@@ -13,6 +13,18 @@ export function ReadingSheet({ ctx, reading, onClose }: { ctx: Ctx; reading: Rea
   const [picking, setPicking] = useState<number | null>(null);
   const [msg, setMsg] = useState(''); const [busy, setBusy] = useState(false); const [arm, setArm] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const [mode, setMode] = useState<'random' | 'manual'>(reading ? 'manual' : 'random');
+  const [count, setCount] = useState(3); const [allowRev, setAllowRev] = useState(true);
+  const [phase, setPhase] = useState<'idle' | 'shuffling' | 'dealt'>('idle'); const [dealKey, setDealKey] = useState(0);
+  function shuffleDeal() {
+    setPhase('shuffling'); setMsg('');
+    const ids = CARD_LIST.map(c => c.id), rnd = new Uint32Array(ids.length + count);
+    crypto.getRandomValues(rnd);
+    for (let i = ids.length - 1; i > 0; i--) { const j = rnd[i] % (i + 1); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+    const drawn = ids.slice(0, count).map((c, k) => ({ c, r: allowRev && rnd[ids.length + k] % 4 === 0 }));
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.setTimeout(() => { setCards(drawn); setPhase('dealt'); setDealKey(k => k + 1); }, reduce ? 0 : 900);
+  }
   useEffect(() => {
     const f = (e: KeyboardEvent) => { if (e.key === 'Escape') picking !== null ? setPicking(null) : onClose(); };
     window.addEventListener('keydown', f); ref.current?.querySelector<HTMLElement>('input,button')?.focus();
@@ -23,7 +35,7 @@ export function ReadingSheet({ ctx, reading, onClose }: { ctx: Ctx; reading: Rea
   async function save(e: React.FormEvent) {
     e.preventDefault();
     const cs = cards.filter(x => x.c);
-    if (cs.length < 3) { setMsg('Elige al menos 3 cartas.'); return; }
+    if (cs.length < 3) { setMsg(mode === 'random' ? 'Primero baraja y reparte.' : 'Elige al menos 3 cartas.'); return; }
     setBusy(true);
     try { await repo.saveReading({ id: reading?.id, date, cards: cs, positions: reading?.positions ?? null, tags, note: note.trim() }); await ctx.refresh(); onClose(); }
     catch { setMsg('No se pudo guardar. Revisa tu conexión.'); }
@@ -43,14 +55,29 @@ export function ReadingSheet({ ctx, reading, onClose }: { ctx: Ctx; reading: Rea
           <h2 id="rs-title" className="sheet-title">{reading ? 'Editar tirada' : 'Nueva tirada'}</h2>
           <label className="field">Fecha<input type="date" value={date} onChange={e => setDate(e.target.value)} required /></label>
 
-          <div className="field"><span>Cartas, en el orden en que salieron</span>
+          <div className="seg mode-seg" role="group" aria-label="Tipo de tirada">
+            <button type="button" aria-pressed={mode === 'random'} onClick={() => setMode('random')}><Icon name="shuffle" size={18} />Tirar aquí</button>
+            <button type="button" aria-pressed={mode === 'manual'} onClick={() => setMode('manual')}><Icon name="edit" size={18} />Registrar mis cartas</button>
+          </div>
+          {mode === 'random' && (
+            <div className="random-panel">
+              <div className={`deck${phase === 'shuffling' ? ' is-shuffling' : ''}`} aria-hidden="true">{[0, 1, 2, 3, 4].map(i => <span key={i} className="deck-card" style={{ '--k': i } as React.CSSProperties} />)}</div>
+              <div className="random-opts">
+                <span className="fine">¿Cuántas cartas?</span>
+                <div className="chips-row">{[3, 4, 5, 6].map(n => <button type="button" key={n} className="chip-btn" aria-pressed={count === n} onClick={() => setCount(n)}>{n}</button>)}</div>
+                <label className="check"><input type="checkbox" checked={allowRev} onChange={e => setAllowRev(e.target.checked)} /> Pueden salir invertidas</label>
+                <button type="button" className="btn btn-primary" onClick={shuffleDeal} disabled={phase === 'shuffling'}><Icon name="shuffle" size={18} />{phase === 'shuffling' ? 'Barajando…' : phase === 'dealt' ? 'Volver a tirar' : 'Barajar y repartir'}</button>
+              </div>
+            </div>
+          )}
+          {(mode === 'manual' || phase === 'dealt') && <div className="field"><span>{mode === 'random' ? 'Tus cartas' : 'Cartas, en el orden en que salieron'}</span>
             <div className="pick-row">
               {cards.map((x, i) => {
                 const c = CARDS[x.c];
                 return (
                   <div key={i} className="pick-slot">
                     <span className="pick-label">{posOf(reading, i)}</span>
-                    <button type="button" className={`pick-card${c ? ' has' : ''}${x.r ? ' is-rev' : ''}`} onClick={() => setPicking(i)} aria-label={c ? `Cambiar ${c.name}` : `Elegir carta de ${posOf(reading, i)}`}>
+                    <button type="button" key={`${dealKey}-${i}`} style={{ '--i': i } as React.CSSProperties} className={`pick-card${c ? ' has' : ''}${x.r ? ' is-rev' : ''}${mode === 'random' && phase === 'dealt' ? ' is-reveal' : ''}`} onClick={() => setPicking(i)} aria-label={c ? `Cambiar ${c.name}` : `Elegir carta de ${posOf(reading, i)}`}>
                       {c ? <img src={cardImg(c.id)} alt="" /> : <Icon name="plus" size={26} />}
                     </button>
                     {c && <button type="button" className={`rev-toggle${x.r ? ' on' : ''}`} aria-pressed={!!x.r} onClick={() => setCards(cards.map((y, k) => k === i ? { ...y, r: !y.r } : y))}><Icon name="flip" size={16} />Invertida</button>}
@@ -62,7 +89,7 @@ export function ReadingSheet({ ctx, reading, onClose }: { ctx: Ctx; reading: Rea
               <button type="button" className="btn btn-ghost btn-sm" disabled={cards.length >= 6} onClick={() => setCards([...cards, { c: '' }])}><Icon name="plus" size={18} />Carta</button>
               <button type="button" className="btn btn-ghost btn-sm" disabled={cards.length <= 3} onClick={() => setCards(cards.slice(0, -1))}>Quitar última</button>
             </div>
-          </div>
+          </div>}
 
           <div className="field"><span>¿Sobre qué preguntaste?</span>
             <div className="chips-row">{ctx.viewed.tags.map(t => <button type="button" key={t} className="chip-btn" aria-pressed={tags.includes(t)} onClick={() => setTags(tags.includes(t) ? tags.filter(x => x !== t) : [...tags, t])}>{t}</button>)}</div>

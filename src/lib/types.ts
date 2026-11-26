@@ -1,4 +1,4 @@
-export type Placement = [planet: string, sign: string, house: number | ''];
+export type Placement = [planet: string, sign: string, house: number | '', lon?: number];
 
 export interface ProfileMeta {
   /** Personas con las que suele preguntar en el amor, para personalizar el consejo. */
@@ -9,6 +9,9 @@ export interface ProfileMeta {
   recurring?: string[];
   /** Patrones personales que quiere vigilar. */
   patterns?: string[];
+  /** Datos de nacimiento con los que se calculó la carta. */
+  birth?: { date: string; time: string | null; place: string; lat: number; lon: number; tz: string } | null;
+  birth_skipped?: boolean;
 }
 
 export interface Profile {

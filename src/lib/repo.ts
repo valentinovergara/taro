@@ -5,7 +5,7 @@ import type { Circle, Profile } from './types';
 const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-export const supabase: SupabaseClient | null = URL && KEY ? createClient(URL, KEY, { auth: { persistSession: true, detectSessionInUrl: true, flowType: 'pkce' } }) : null;
+export const supabase: SupabaseClient | null = URL && KEY ? createClient(URL, KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce', storage: typeof window !== 'undefined' ? window.localStorage : undefined } }) : null;
 export const isLive = !!supabase;
 
 export interface Snapshot { me: Profile | null; members: Profile[]; readings: Reading[]; circle: Circle | null; context: string }
@@ -23,10 +23,19 @@ export interface Repo {
 /* ---------------- Supabase ---------------- */
 export const auth = {
   async session(): Promise<Session | null> { return supabase ? (await supabase.auth.getSession()).data.session : null; },
-  onChange(cb: (s: Session | null) => void) { if (!supabase) return () => {}; const { data } = supabase.auth.onAuthStateChange((_e, s) => cb(s)); return () => data.subscription.unsubscribe(); },
+  onChange(cb: (s: Session | null, event?: string) => void) { if (!supabase) return () => {}; const { data } = supabase.auth.onAuthStateChange((e, s) => cb(s, e)); return () => data.subscription.unsubscribe(); },
+  redirect() { return window.location.origin + window.location.pathname; },
+  async signIn(email: string, password: string) { const { error } = await supabase!.auth.signInWithPassword({ email, password }); if (error) throw error; },
+  async signUp(email: string, password: string) {
+    const { data, error } = await supabase!.auth.signUp({ email, password, options: { emailRedirectTo: auth.redirect() } });
+    if (error) throw error;
+    return { needsConfirm: !data.session };
+  },
+  async resetPassword(email: string) { const { error } = await supabase!.auth.resetPasswordForEmail(email, { redirectTo: auth.redirect() }); if (error) throw error; },
+  async setPassword(password: string) { const { error } = await supabase!.auth.updateUser({ password }); if (error) throw error; },
+  async email() { return (await auth.session())?.user.email || ''; },
   async sendLink(email: string) {
-    const redirect = window.location.origin + window.location.pathname;
-    const { error } = await supabase!.auth.signInWithOtp({ email, options: { emailRedirectTo: redirect } });
+    const { error } = await supabase!.auth.signInWithOtp({ email, options: { emailRedirectTo: auth.redirect(), shouldCreateUser: false } });
     if (error) throw error;
   },
   async verifyCode(email: string, token: string) { const { error } = await supabase!.auth.verifyOtp({ email, token, type: 'email' }); if (error) throw error; },

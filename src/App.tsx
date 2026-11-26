@@ -9,15 +9,17 @@ import { History } from './screens/History';
 import { Sky } from './screens/Sky';
 import { Settings } from './screens/Settings';
 import { ReadingSheet } from './screens/ReadingSheet';
-import { Login, Onboarding } from './screens/Login';
+import { Login, Onboarding, NewPassword } from './screens/Login';
+import { Natal } from './screens/Natal';
 import { Character } from './components/Character';
 
-export type View = 'hoy' | 'mes' | 'historial' | 'cielo' | 'ajustes';
-const VIEWS: View[] = ['hoy', 'mes', 'historial', 'cielo', 'ajustes'];
+export type View = 'hoy' | 'mes' | 'historial' | 'cielo' | 'carta' | 'ajustes';
+const VIEWS: View[] = ['hoy', 'mes', 'historial', 'cielo', 'carta', 'ajustes'];
 const NAV: { v: View; label: string; icon: string }[] = [
   { v: 'hoy', label: 'Hoy', icon: 'today' }, { v: 'mes', label: 'Mes', icon: 'month' },
   { v: 'historial', label: 'Historial', icon: 'history' }, { v: 'cielo', label: 'Cielo', icon: 'sky' },
 ];
+const SIDE_EXTRA: { v: View; label: string; icon: string }[] = [{ v: 'carta', label: 'Carta natal', icon: 'chart' }];
 
 function parseHash(): { handle: string | null; view: View } {
   const [, h, v] = window.location.hash.replace(/^#/, '').split('/');
@@ -31,7 +33,7 @@ export interface Ctx {
 
 export default function App() {
   const [snap, setSnap] = useState<Snapshot | null>(null);
-  const [status, setStatus] = useState<'loading' | 'signedout' | 'ready' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'signedout' | 'ready' | 'error' | 'recovery'>('loading');
   const [err, setErr] = useState('');
   const [route, setRoute] = useState(parseHash);
   const [sheet, setSheet] = useState<{ open: boolean; reading: Reading | null }>({ open: false, reading: null });
@@ -43,7 +45,7 @@ export default function App() {
     } catch (e) { setErr(e instanceof Error ? e.message : 'Error al cargar'); setStatus('error'); }
   }, []);
 
-  useEffect(() => { refresh(); const off1 = auth.onChange(() => refresh()); const off2 = repo.subscribe(() => refresh()); return () => { off1(); off2(); }; }, [refresh]);
+  useEffect(() => { refresh(); const off1 = auth.onChange((_s, ev) => { if (ev === 'PASSWORD_RECOVERY') setStatus('recovery'); else if (ev !== 'TOKEN_REFRESHED') refresh(); }); const off2 = repo.subscribe(() => refresh()); return () => { off1(); off2(); }; }, [refresh]);
   useEffect(() => { const f = () => setRoute(parseHash()); window.addEventListener('hashchange', f); return () => window.removeEventListener('hashchange', f); }, []);
 
   const viewed = useMemo(() => {
@@ -63,6 +65,7 @@ export default function App() {
   }, [viewed]);
 
   if (status === 'loading') return <div className="splash"><Character kind="nebula" size={140} className="breathe" /><p>Barajando…</p></div>;
+  if (status === 'recovery') return <NewPassword onDone={() => { setStatus('loading'); refresh(); }} />;
   if (status === 'signedout') return <Login />;
   if (status === 'error' || !snap) return <div className="splash"><Character kind="moon" mood="sleepy" size={140} /><p>No pudimos cargar Taro.</p><p className="muted">{err}</p><button className="btn" onClick={refresh}>Reintentar</button></div>;
   if (!snap.me || !snap.me.circle_id) return <Onboarding snap={snap} onDone={refresh} />;
@@ -89,7 +92,7 @@ export default function App() {
         <div className="logo"><span className="logo-orb" aria-hidden="true" />Taro</div>
         {switcher}
         <nav aria-label="Secciones">
-          {NAV.map(n => <button key={n.v} type="button" className="side-link" aria-current={view === n.v ? 'page' : undefined} onClick={() => go(n.v)}><Icon name={n.icon} />{n.label}</button>)}
+          {[...NAV, ...SIDE_EXTRA].map(n => <button key={n.v} type="button" className="side-link" aria-current={view === n.v ? 'page' : undefined} onClick={() => go(n.v)}><Icon name={n.icon} />{n.label}</button>)}
         </nav>
         {isMine && <button type="button" className="btn btn-primary side-new" onClick={() => ctx.openSheet()}><Icon name="plus" />Nueva tirada</button>}
         <div className="side-foot">
@@ -110,13 +113,14 @@ export default function App() {
         {view === 'mes' && <Month ctx={ctx} />}
         {view === 'historial' && <History ctx={ctx} />}
         {view === 'cielo' && <Sky ctx={ctx} />}
+        {view === 'carta' && <Natal ctx={ctx} />}
         {view === 'ajustes' && <Settings ctx={ctx} />}
       </main>
 
       <nav className="bottomnav" aria-label="Secciones">
         {NAV.slice(0, 2).map(n => <NavBtn key={n.v} n={n} active={view === n.v} onClick={() => go(n.v)} />)}
         <button type="button" className="fab" aria-label="Nueva tirada" disabled={!isMine} onClick={() => ctx.openSheet()}><Icon name="plus" size={26} /></button>
-        {NAV.slice(2).map(n => <NavBtn key={n.v} n={n} active={view === n.v} onClick={() => go(n.v)} />)}
+        {NAV.slice(2).map(n => <NavBtn key={n.v} n={n} active={view === n.v || (n.v === 'cielo' && view === 'carta')} onClick={() => go(n.v)} />)}
       </nav>
 
       {sheet.open && <ReadingSheet ctx={ctx} reading={sheet.reading} onClose={() => setSheet({ open: false, reading: null })} />}

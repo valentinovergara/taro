@@ -1,6 +1,6 @@
 import type { ReactNode, CSSProperties } from 'react';
 import { CARDS, cardImg, type DrawnCard } from '../lib/tarot';
-import { Character, type CharacterKind } from './Character';
+import { Character, defaultKind, type CharacterKind } from './Character';
 
 const P: Record<string, ReactNode> = {
   today: <><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" /></>,
@@ -30,6 +30,11 @@ const P: Record<string, ReactNode> = {
   mic: <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" /></>,
   bell: <><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>,
   moonph: <path d="M15 4a8 8 0 1 0 5 13A7 7 0 0 1 15 4z" />,
+  share: <><path d="M12 15V3.5" /><path d="M7.5 8L12 3.5 16.5 8" /><path d="M8 11H6.5A2.5 2.5 0 0 0 4 13.5v4A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5v-4a2.5 2.5 0 0 0-2.5-2.5H16" /></>,
+  download: <><path d="M12 4v11" /><path d="M7.5 10.5L12 15l4.5-4.5" /><path d="M5 19.5h14" /></>,
+  insta: <><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17" cy="7" r=".6" fill="currentColor" /></>,
+  heart: <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />,
+  work: <><rect x="3.5" y="7.5" width="17" height="12" rx="2.5" /><path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.5M3.5 13h17" /></>,
   link: <><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></>,
 };
 export function Icon({ name, size = 22 }: { name: keyof typeof P | string; size?: number }) {
@@ -51,6 +56,7 @@ export function TarotCard({ card, i = 0, size = 'md', deal = false, onClick, lab
 export function SuitDot({ suit }: { suit: string }) { return <span className="suit-dot" style={{ background: `var(--${suit})` }} aria-hidden="true" />; }
 
 export function Avatar({ name, accent, size = 32, kind }: { name: string; accent: string; size?: number; kind?: CharacterKind | null }) {
+  kind = kind || defaultKind(name);
   if (kind) return <span className="avatar avatar-ch" style={{ width: size, height: size, background: `radial-gradient(circle at 50% 40%, #fff, color-mix(in srgb, ${accent} 35%, #fff))` }} aria-hidden="true"><Character kind={kind} size={size * 1.05} aura={false} /></span>;
   return <span className="avatar" style={{ width: size, height: size, background: `radial-gradient(circle at 35% 30%, #fff 0%, ${accent} 55%, color-mix(in srgb, ${accent} 70%, #3b2547) 100%)`, fontSize: size * 0.42 }} aria-hidden="true">{name.charAt(0).toUpperCase()}</span>;
 }

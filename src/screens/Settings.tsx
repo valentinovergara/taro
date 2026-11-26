@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Ctx } from '../App';
 import { repo, auth } from '../lib/repo';
 import { Icon, Avatar } from '../components/ui';
-import { Character, type CharacterKind } from '../components/Character';
+import { Character, defaultKind, type CharacterKind } from '../components/Character';
 
 const KINDS: [CharacterKind, string][] = [['sun', 'Sol'], ['moon', 'Luna'], ['star', 'Estrella'], ['planet', 'Planeta'], ['comet', 'Cometa'], ['nebula', 'Nebulosa']];
 const COLORS: [string, string][] = [['#B58CE7', 'Lavanda'], ['#69CDA6', 'Menta'], ['#F5A9CE', 'Rosa'], ['#94BFF2', 'Cielo'], ['#F7AC87', 'Durazno'], ['#F3D375', 'Sol']];
@@ -17,7 +17,7 @@ export function Settings({ ctx }: { ctx: Ctx }) {
   const [msg, setMsg] = useState('');
   const [copied, setCopied] = useState('');
   const [pw, setPw] = useState(''); const [pwMsg, setPwMsg] = useState('');
-  const [av, setAv] = useState<CharacterKind | null>(me.avatar || null); const [accent, setAccent] = useState(me.accent);
+  const [av, setAv] = useState<CharacterKind>(me.avatar || defaultKind(me.display_name)); const [accent, setAccent] = useState(me.accent);
   const base = window.location.origin + window.location.pathname;
 
   async function save() {
@@ -44,7 +44,6 @@ export function Settings({ ctx }: { ctx: Ctx }) {
           <div className="field"><span>Tu personaje</span>
             <div className="avatar-pick" role="radiogroup" aria-label="Personaje">
               {KINDS.map(([k, n]) => <button key={k} type="button" role="radio" aria-checked={av === k} aria-label={n} className="av-opt" style={{ '--c': accent } as React.CSSProperties} onClick={() => setAv(k)}><Character kind={k} size={52} aura={false} /></button>)}
-              <button type="button" role="radio" aria-checked={!av} aria-label="Solo inicial" className="av-opt av-letter" style={{ '--c': accent } as React.CSSProperties} onClick={() => setAv(null)}>{me.display_name.charAt(0)}</button>
             </div>
           </div>
           <div className="field"><span>Tu color</span>

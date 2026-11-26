@@ -13,6 +13,10 @@ const PAL: Record<CharacterKind, { hi: string; mid: string; lo: string; aura: [s
   nebula: { hi: '#ffffff', mid: '#f7b6d8', lo: '#9fb8f5', aura: ['#ffe0ee', '#d8f5ec'] },
 };
 
+/** Personaje por defecto, estable para cada nombre. */
+export const CHARACTER_KINDS: CharacterKind[] = ['sun', 'moon', 'star', 'planet', 'comet', 'nebula'];
+export function defaultKind(seed: string): CharacterKind { let h = 0; for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return CHARACTER_KINDS[h % 6]; }
+
 export const SUIT_CHARACTER: Record<Suit, CharacterKind> = { mayor: 'planet', copas: 'moon', pentaculos: 'sun', espadas: 'comet', bastos: 'star' };
 
 /** Personaje glossy de gel translúcido con cara mínima. Puramente decorativo. */

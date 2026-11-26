@@ -3,7 +3,8 @@ import type { Ctx } from '../App';
 import { CARDS, energyLine, dominantSuit, posOf, validCards, SUIT_LABEL, type Reading } from '../lib/tarot';
 import { readingSummary } from '../lib/meanings';
 import { Character, SUIT_CHARACTER } from '../components/Character';
-import { TarotCard, Icon } from '../components/ui';
+import { TarotCard, Icon, Avatar } from '../components/ui';
+import { ShareStory } from '../components/ShareStory';
 import { CardDetail } from './CardDetail';
 import { Feed, FeedCard } from '../components/Feed';
 import { Recs } from '../components/Recs';
@@ -22,6 +23,9 @@ function MyHome({ ctx }: { ctx: Ctx }) {
   const suit = dominantSuit(r);
   const cards = r ? validCards(r) : [];
 
+  const [share, setShare] = useState(false);
+  const friends = ctx.snap.members.filter(m => m.id !== ctx.snap.me!.id);
+
   return (
     <div className="screen today">
       <header className="today-head">
@@ -35,7 +39,7 @@ function MyHome({ ctx }: { ctx: Ctx }) {
 
       {!r ? (
         <section className="mood-card mood-empty" aria-label="Tu tirada de hoy">
-          <div className="mood-art"><Character kind="nebula" size={210} className="float" /></div>
+          <div className="mood-art"><Character kind="nebula" size={150} className="float" /></div>
           <div className="mood-copy">
             <span className="chip chip-soft">Hoy</span>
             <h2>Tu mesa está lista.</h2>
@@ -44,44 +48,63 @@ function MyHome({ ctx }: { ctx: Ctx }) {
           </div>
         </section>
       ) : (
-        <>
-          <div className="today-grid">
-            <section className="mood-card" aria-label="Energía de la tirada">
-              <div className="mood-art"><Character kind={suit ? SUIT_CHARACTER[suit] : 'nebula'} mood={suit === 'espadas' || suit === 'mayor' ? 'sleepy' : 'happy'} size={210} className="float" /></div>
-              <div className="mood-copy">
-                <span className="chip chip-soft">{suit ? SUIT_LABEL[suit] : ''}</span>
-                <h2>{energyLine(r)}</h2>
-                <p>{cards.length} cartas · {(r.tags || []).join(' · ') || 'sin tema'}</p>
-              </div>
-            </section>
-            <section className="spread-wrap" aria-label="Cartas">
-              <div className="spread" style={{ '--n': cards.length } as React.CSSProperties}>
-                {cards.map((x, i) => {
-                  const c = CARDS[x.c];
-                  return (
-                    <figure className="slot" key={r.id + i}>
-                      <figcaption className="slot-label" style={{ '--suit': `var(--${c.suit})` } as React.CSSProperties}>{posOf(r, i)}</figcaption>
-                      <TarotCard card={x} i={i} size="lg" deal onClick={() => setDetail({ r, i })} label={`${c.name}: ver qué significa en ${posOf(r, i)}`} />
-                      <p className="slot-name">{c.name}{x.r && <span className="muted"> · invertida</span>}</p>
-                      <p className="slot-kw">Toca para leerla</p>
-                    </figure>
-                  );
-                })}
-              </div>
-            </section>
+        <section className="board" aria-label="Tu tirada de hoy" style={{ '--suit': `var(--${suit || 'mayor'})` } as React.CSSProperties}>
+          <div className="board-cards spread" style={{ '--n': cards.length } as React.CSSProperties}>
+            {cards.map((x, i) => {
+              const c = CARDS[x.c];
+              return (
+                <figure className="slot" key={r.id + i}>
+                  <figcaption className="slot-label" style={{ '--suit': `var(--${c.suit})` } as React.CSSProperties}>{posOf(r, i)}</figcaption>
+                  <TarotCard card={x} i={i} size="lg" deal onClick={() => setDetail({ r, i })} label={`${c.name}: ver qué significa en ${posOf(r, i)}`} />
+                  <p className="slot-name">{c.name}{x.r && <span className="muted"> · invertida</span>}</p>
+                </figure>
+              );
+            })}
           </div>
-          <section className="note-card summary-card">
-            <div className="note-head"><h3>Lo que dice tu tirada</h3><button className="btn btn-ghost btn-sm" onClick={() => ctx.openSheet(r)}><Icon name="edit" size={18} />Editar</button></div>
-            <p className="note-text">{readingSummary(r)}</p>
-            {r.note && <><h3 style={{ marginTop: 18 }}>Tu nota</h3><p className="note-text plain">{r.note}</p></>}
-            {r.note_private && <p className="fine" style={{ marginTop: 8 }}><Icon name="lock" size={14} /> Tu nota es solo para ti.</p>}
-          </section>
-        </>
+          <div className="board-read">
+            <div className="board-mood">
+              <Character kind={suit ? SUIT_CHARACTER[suit] : 'nebula'} mood={suit === 'espadas' || suit === 'mayor' ? 'sleepy' : 'happy'} size={76} aura={false} className="float" />
+              <div>
+                <span className="chip chip-soft">{suit ? SUIT_LABEL[suit] : 'Tu energía'}{(r.tags || []).length ? ` · ${r.tags.join(' · ')}` : ''}</span>
+                <h2>{energyLine(r)}</h2>
+              </div>
+            </div>
+            <p className="board-sum">{readingSummary(r)}</p>
+            {r.note && <blockquote className="board-note">{r.note}{r.note_private && <span className="fine"><Icon name="lock" size={13} /> solo para ti</span>}</blockquote>}
+            <p className="fine board-hint">Toca una carta para leerla con calma.</p>
+            <div className="board-actions">
+              <button type="button" className="btn btn-primary btn-ig" onClick={() => setShare(true)}><Icon name="insta" size={18} />Compartir en historia</button>
+              <button type="button" className="btn btn-ghost" onClick={() => ctx.openSheet(r)}><Icon name="edit" size={18} />Editar</button>
+            </div>
+          </div>
+        </section>
       )}
 
-      <Recs ctx={ctx} today={r} />
-      <Feed ctx={ctx} />
+      <div className="home-cols">
+        <div className="home-main"><Feed ctx={ctx} /></div>
+        <aside className="home-aside">
+          <Recs ctx={ctx} today={r} />
+          <section className="panel mini-friends" aria-labelledby="mf-title">
+            <div className="section-head"><h3 id="mf-title">Tu gente</h3><button type="button" className="link" onClick={() => ctx.go('amigos', ctx.snap.me!.handle)}>Ver todos</button></div>
+            {friends.length === 0 ? <p className="fine">Agrega a tus amigos para ver sus tiradas aquí.</p> : (
+              <ul>
+                {friends.slice(0, 6).map(f => {
+                  const last = ctx.snap.readings.filter(x => x.user_id === f.id).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+                  return (
+                    <li key={f.id}><button type="button" onClick={() => ctx.go('hoy', f.handle)}>
+                      <Avatar name={f.display_name} accent={f.accent} kind={f.avatar} size={40} />
+                      <span><b>{f.display_name}</b><span className="fine">{last ? (last.date === todayIso() ? `Hoy: ${energyLine(last)}` : 'Sin tirada hoy') : 'Aún no comparte tiradas'}</span></span>
+                      <Icon name="right" size={16} />
+                    </button></li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </aside>
+      </div>
       {detail && <CardDetail ctx={ctx} reading={detail.r} index={detail.i} onClose={() => setDetail(null)} />}
+      {share && r && <ShareStory reading={r} name={viewed.display_name} onClose={() => setShare(false)} />}
     </div>
   );
 }

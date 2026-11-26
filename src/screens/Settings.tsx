@@ -2,6 +2,10 @@ import { useState } from 'react';
 import type { Ctx } from '../App';
 import { repo, auth } from '../lib/repo';
 import { Icon, Avatar } from '../components/ui';
+import { Character, type CharacterKind } from '../components/Character';
+
+const KINDS: [CharacterKind, string][] = [['sun', 'Sol'], ['moon', 'Luna'], ['star', 'Estrella'], ['planet', 'Planeta'], ['comet', 'Cometa'], ['nebula', 'Nebulosa']];
+const COLORS: [string, string][] = [['#B58CE7', 'Lavanda'], ['#69CDA6', 'Menta'], ['#F5A9CE', 'Rosa'], ['#94BFF2', 'Cielo'], ['#F7AC87', 'Durazno'], ['#F3D375', 'Sol']];
 
 export function Settings({ ctx }: { ctx: Ctx }) {
   const me = ctx.snap.me!;
@@ -13,11 +17,12 @@ export function Settings({ ctx }: { ctx: Ctx }) {
   const [msg, setMsg] = useState('');
   const [copied, setCopied] = useState('');
   const [pw, setPw] = useState(''); const [pwMsg, setPwMsg] = useState('');
+  const [av, setAv] = useState<CharacterKind | null>(me.avatar || null); const [accent, setAccent] = useState(me.accent);
   const base = window.location.origin + window.location.pathname;
 
   async function save() {
     try {
-      await repo.saveProfile({ display_name: name.trim() || me.display_name, tags: tags.split(',').map(t => t.trim()).filter(Boolean) });
+      await repo.saveProfile({ display_name: name.trim() || me.display_name, tags: tags.split(',').map(t => t.trim()).filter(Boolean), avatar: av, accent });
       await repo.saveMyMeta({ ...ctx.snap.myMeta, love: love.trim(), studio: studio.trim() });
       await repo.saveContext(context);
       await ctx.refresh(); setMsg('Guardado.');
@@ -35,7 +40,16 @@ export function Settings({ ctx }: { ctx: Ctx }) {
       <header><p className="eyebrow">Ajustes</p><h1 className="h-display">Tu perfil</h1></header>
       <div className="settings-grid">
         <section className="panel">
-          <div className="me-row"><Avatar name={me.display_name} accent={me.accent} size={52} /><div><b>{me.display_name}</b><p className="fine">taro/#/{me.handle}</p></div></div>
+          <div className="me-row"><Avatar name={me.display_name} accent={accent} kind={av} size={64} /><div><b>{me.display_name}</b><p className="fine">taro/#/{me.handle}</p></div></div>
+          <div className="field"><span>Tu personaje</span>
+            <div className="avatar-pick" role="radiogroup" aria-label="Personaje">
+              {KINDS.map(([k, n]) => <button key={k} type="button" role="radio" aria-checked={av === k} aria-label={n} className="av-opt" style={{ '--c': accent } as React.CSSProperties} onClick={() => setAv(k)}><Character kind={k} size={52} aura={false} /></button>)}
+              <button type="button" role="radio" aria-checked={!av} aria-label="Solo inicial" className="av-opt av-letter" style={{ '--c': accent } as React.CSSProperties} onClick={() => setAv(null)}>{me.display_name.charAt(0)}</button>
+            </div>
+          </div>
+          <div className="field"><span>Tu color</span>
+            <div className="accents">{COLORS.map(([c, n]) => <button type="button" key={c} className="accent-dot" style={{ background: c }} aria-pressed={accent.toLowerCase() === c.toLowerCase()} aria-label={n} onClick={() => setAccent(c)} />)}</div>
+          </div>
           <label className="field">Nombre<input value={name} onChange={e => setName(e.target.value)} /></label>
           <label className="field">Temas de pregunta (separados por coma)<input value={tags} onChange={e => setTags(e.target.value)} /></label>
           <label className="field">¿Con quién preguntas en el amor? <span className="fine">Personaliza el consejo del mes</span><input value={love} onChange={e => setLove(e.target.value)} /></label>

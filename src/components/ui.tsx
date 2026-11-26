@@ -1,5 +1,6 @@
 import type { ReactNode, CSSProperties } from 'react';
 import { CARDS, cardImg, type DrawnCard } from '../lib/tarot';
+import { Character, type CharacterKind } from './Character';
 
 const P: Record<string, ReactNode> = {
   today: <><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" /></>,
@@ -26,6 +27,9 @@ const P: Record<string, ReactNode> = {
   film: <><rect x="3.5" y="5" width="17" height="14" rx="3" /><path d="M3.5 9.5h17M3.5 14.5h17M8 5v14M16 5v14" /></>,
   lock: <><rect x="5" y="10.5" width="14" height="9.5" rx="2.5" /><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" /></>,
   down: <path d="M6 9l6 6 6-6" />,
+  mic: <><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" /></>,
+  bell: <><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>,
+  moonph: <path d="M15 4a8 8 0 1 0 5 13A7 7 0 0 1 15 4z" />,
   link: <><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></>,
 };
 export function Icon({ name, size = 22 }: { name: keyof typeof P | string; size?: number }) {
@@ -46,6 +50,19 @@ export function TarotCard({ card, i = 0, size = 'md', deal = false, onClick, lab
 
 export function SuitDot({ suit }: { suit: string }) { return <span className="suit-dot" style={{ background: `var(--${suit})` }} aria-hidden="true" />; }
 
-export function Avatar({ name, accent, size = 32 }: { name: string; accent: string; size?: number }) {
+export function Avatar({ name, accent, size = 32, kind }: { name: string; accent: string; size?: number; kind?: CharacterKind | null }) {
+  if (kind) return <span className="avatar avatar-ch" style={{ width: size, height: size, background: `radial-gradient(circle at 50% 40%, #fff, color-mix(in srgb, ${accent} 35%, #fff))` }} aria-hidden="true"><Character kind={kind} size={size * 1.05} aura={false} /></span>;
   return <span className="avatar" style={{ width: size, height: size, background: `radial-gradient(circle at 35% 30%, #fff 0%, ${accent} 55%, color-mix(in srgb, ${accent} 70%, #3b2547) 100%)`, fontSize: size * 0.42 }} aria-hidden="true">{name.charAt(0).toUpperCase()}</span>;
+}
+
+const SUIT_PATH: Record<string, ReactNode> = {
+  copas: <><path d="M6 4h12v3a6 6 0 0 1-12 0z" /><path d="M12 13v5M8 20h8" /></>,
+  pentaculos: <><circle cx="12" cy="12" r="8" /><path d="M12 6.5l1.6 3.6 3.9.4-2.9 2.6.8 3.9-3.4-2-3.4 2 .8-3.9-2.9-2.6 3.9-.4z" /></>,
+  espadas: <><path d="M12 2.5l2 3v10h-4v-10z" /><path d="M7 15.5h10M12 15.5v6" /></>,
+  bastos: <><path d="M9 21L15.5 4" /><path d="M14.6 6.5l2.6.4M13.4 10l2.4.9M17 3.2c.6 1-.2 2.3-1.5 1.8" /><circle cx="15.8" cy="3.6" r="1.4" /></>,
+  mayor: <path d="M12 3l2.4 5.6 6 .6-4.6 4 1.4 6-5.2-3.2L6.8 19.2l1.4-6-4.6-4 6-.6z" />,
+};
+/** Icono del palo, relleno con su color. */
+export function SuitIcon({ suit, size = 22 }: { suit: string; size?: number }) {
+  return <svg className="suit-icon" width={size} height={size} viewBox="0 0 24 24" fill={`var(--${suit})`} stroke="var(--ink)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">{SUIT_PATH[suit]}</svg>;
 }

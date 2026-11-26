@@ -7,7 +7,7 @@ export const SIGN_GLYPH = ['♈︎','♉︎','♊︎','♋︎','♌︎','♍︎'
 export const ELEM: Record<string, string> = { Aries:'Fuego',Leo:'Fuego',Sagitario:'Fuego',Tauro:'Tierra',Virgo:'Tierra',Capricornio:'Tierra',Géminis:'Aire',Libra:'Aire',Acuario:'Aire',Cáncer:'Agua',Escorpio:'Agua',Piscis:'Agua' };
 export const PLANETS = ['Ascendente','Sol','Luna','Mercurio','Venus','Marte','Júpiter','Saturno','Urano','Neptuno','Plutón'];
 export const PLANET_GLYPH: Record<string, string> = { Ascendente:'AC',Sol:'☉',Luna:'☽',Mercurio:'☿',Venus:'♀',Marte:'♂',Júpiter:'♃',Saturno:'♄',Urano:'♅',Neptuno:'♆',Plutón:'♇' };
-const TRAIT: Record<string, string> = { Aries:'impulso, franqueza y ganas de empezar',Tauro:'calma, constancia y placer de los sentidos',Géminis:'curiosidad, palabra y juego',Cáncer:'ternura, memoria y necesidad de refugio',Leo:'calidez, orgullo y ganas de brillar',Virgo:'detalle, servicio y orden',Libra:'armonía, belleza y acuerdo',Escorpio:'intensidad, profundidad y lealtad',Sagitario:'aventura, sentido y libertad',Capricornio:'ambición, estructura y paciencia',Acuario:'independencia, ideas y amistad',Piscis:'sensibilidad, imaginación y compasión' };
+export const TRAIT: Record<string, string> = { Aries:'impulso, franqueza y ganas de empezar',Tauro:'calma, constancia y placer de los sentidos',Géminis:'curiosidad, palabra y juego',Cáncer:'ternura, memoria y necesidad de refugio',Leo:'calidez, orgullo y ganas de brillar',Virgo:'detalle, servicio y orden',Libra:'armonía, belleza y acuerdo',Escorpio:'intensidad, profundidad y lealtad',Sagitario:'aventura, sentido y libertad',Capricornio:'ambición, estructura y paciencia',Acuario:'independencia, ideas y amistad',Piscis:'sensibilidad, imaginación y compasión' };
 export const PMEAN: Record<string, string> = { Ascendente:'cómo te muestras al mundo',Sol:'tu identidad y propósito',Luna:'tu necesidad emocional',Mercurio:'tu forma de pensar y decir',Venus:'tu forma de amar',Marte:'tu deseo y cómo defiendes lo tuyo',Júpiter:'tu fe y tu creatividad',Saturno:'tus compromisos y límites',Urano:'tu necesidad de libertad',Neptuno:'tus sueños',Plutón:'tus transformaciones profundas' };
 export const AREA_NATAL: Record<string, string[]> = { Amor:['Venus','Luna','Saturno','Marte'],Trabajo:['Sol','Saturno','Urano','Mercurio','Marte'],Personal:['Ascendente','Sol','Luna','Júpiter'],Familia:['Plutón','Luna'],Sombra:['Marte','Júpiter','Plutón'],Síntesis:['Sol','Luna','Ascendente'] };
 const TB: [string, Astronomy.Body, number, string][] = [
@@ -63,7 +63,7 @@ export function resonance(c: CardDef, N: Placement[]): string {
   }
   const el = SUIT_EL[c.suit], hits = N.filter(n => ELEM[n[1]] === el), s = SUITS[c.suit as keyof typeof SUITS];
   if (!N.length) return `${s.n} es ${el}.`;
-  return hits.length ? `${s.n} es ${el}, como tu ${hits.map(h => `${h[0]} en ${h[1]}`).join(', ')}.` : `${s.n} es ${el}, un elemento que casi no tienes: pide aprenderlo.`;
+  return hits.length ? `${s.n} es ${el}, como tu ${hits.map(h => `${h[0]} en ${h[1]}`).join(', ')}.` : `${s.n} es ${el}, un elemento que casi no está en tu carta: te invita a aprenderlo con paciencia.`;
 }
 
 export function transitFor(area: string, s: SkyBody[] | null, N: Placement[]): string {
@@ -97,4 +97,100 @@ export function natalAdvice(N: Placement[]): NatalAdvice[] {
     text: h4.length ? `${h4.map(n => n[0]).join(' y ')} en tu Casa 4: raíces marcadas por ${TRAIT[h4[0][1]]}.` : ph('Luna', s => `Tu Luna en ${s} hace de casa un lugar de ${TRAIT[s]}.`),
     tip: 'Tu espacio es medicina: cuando lo cuidas, te regulas.' });
   return out.filter(a => a.text);
+}
+
+/* ─── Luna, eclipses y lenguaje sencillo ───────────────── */
+const localIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+export type MoonEvent = { kind: 'nueva' | 'creciente' | 'llena' | 'menguante' | 'eclipse-solar' | 'eclipse-lunar'; label: string; icon: string };
+const QUARTER: MoonEvent[] = [
+  { kind: 'nueva', label: 'Luna nueva', icon: '🌑' }, { kind: 'creciente', label: 'Cuarto creciente', icon: '🌓' },
+  { kind: 'llena', label: 'Luna llena', icon: '🌕' }, { kind: 'menguante', label: 'Cuarto menguante', icon: '🌗' },
+];
+export const MOON_TIP: Record<MoonEvent['kind'], string> = {
+  nueva: 'Buen momento para sembrar una intención: empieza algo pequeño y nómbralo.',
+  creciente: 'La energía sube. Es momento de actuar y sostener lo que empezaste.',
+  llena: 'Todo se ilumina: emociones a flor de piel, cierres y revelaciones. Suelta lo que ya cumplió su ciclo.',
+  menguante: 'Toca soltar, ordenar y descansar antes del próximo comienzo.',
+  'eclipse-solar': 'Un eclipse de Sol: un portal de comienzos inesperados. Mejor observar que forzar.',
+  'eclipse-lunar': 'Un eclipse de Luna: algo emocional sale a la luz para cerrarse. Sé suave contigo.',
+};
+const moonCache = new Map<string, Map<string, MoonEvent[]>>();
+/** Fases principales de la Luna y eclipses de un mes, por fecha local. */
+export function moonEvents(y: number, m: number): Map<string, MoonEvent[]> {
+  const key = `${y}-${m}`;
+  if (moonCache.has(key)) return moonCache.get(key)!;
+  const out = new Map<string, MoonEvent[]>(), start = new Date(y, m, 1), end = new Date(y, m + 1, 1);
+  const add = (d: Date, e: MoonEvent) => { if (d >= start && d < end) { const k = localIso(d); out.set(k, [...(out.get(k) || []), e]); } };
+  try {
+    let q = Astronomy.SearchMoonQuarter(new Date(+start - 864e5));
+    while (q.time.date < end) { add(q.time.date, QUARTER[q.quarter]); q = Astronomy.NextMoonQuarter(q); }
+    let le = Astronomy.SearchLunarEclipse(new Date(+start - 864e5));
+    while (le.peak.date < end) { if (le.kind !== Astronomy.EclipseKind.Penumbral) add(le.peak.date, { kind: 'eclipse-lunar', label: le.kind === Astronomy.EclipseKind.Total ? 'Eclipse total de Luna' : 'Eclipse parcial de Luna', icon: '🔴' }); le = Astronomy.NextLunarEclipse(le.peak); }
+    let se = Astronomy.SearchGlobalSolarEclipse(new Date(+start - 864e5));
+    while (se.peak.date < end) { add(se.peak.date, { kind: 'eclipse-solar', label: se.kind === Astronomy.EclipseKind.Total ? 'Eclipse total de Sol' : se.kind === Astronomy.EclipseKind.Annular ? 'Eclipse anular de Sol' : 'Eclipse parcial de Sol', icon: '🌒' }); se = Astronomy.NextGlobalSolarEclipse(se.peak); }
+  } catch { /* sin datos */ }
+  moonCache.set(key, out);
+  return out;
+}
+/** Nombre de la fase lunar de cualquier día. */
+export function moonPhaseName(date: string): { name: string; icon: string; tip: string } {
+  const [y, m, d] = date.split('-').map(Number), a = Astronomy.MoonPhase(new Date(y, m - 1, d, 12));
+  const P: [number, string, string, string][] = [
+    [22.5, 'Luna nueva', '🌑', 'Momento de intención y silencio.'], [67.5, 'Luna creciente', '🌒', 'Las ideas toman forma; da el primer paso.'],
+    [112.5, 'Cuarto creciente', '🌓', 'Toca actuar y resolver obstáculos.'], [157.5, 'Gibosa creciente', '🌔', 'Ajusta, pule y persevera.'],
+    [202.5, 'Luna llena', '🌕', 'Todo se ilumina y las emociones se sienten más.'], [247.5, 'Gibosa menguante', '🌖', 'Agradece y comparte lo aprendido.'],
+    [292.5, 'Cuarto menguante', '🌗', 'Suelta lo que ya no te sirve.'], [337.5, 'Luna menguante', '🌘', 'Descansa y prepara el terreno.'], [361, 'Luna nueva', '🌑', 'Momento de intención y silencio.'],
+  ];
+  const p = P.find(x => a < x[0])!;
+  return { name: p[1], icon: p[2], tip: p[3] };
+}
+
+const SLOW: Record<string, Astronomy.Body> = { Júpiter: Astronomy.Body.Jupiter, Saturno: Astronomy.Body.Saturn, Urano: Astronomy.Body.Uranus, Neptuno: Astronomy.Body.Neptune, Plutón: Astronomy.Body.Pluto };
+export const isSlow = (n: string) => n in SLOW;
+const sinceCache = new Map<string, number>();
+/** Año en que un planeta lento entró al signo donde está (ignorando idas y vueltas por retrogradación). */
+export function signSince(n: string, date: string): number | null {
+  const b = SLOW[n]; if (!b) return null;
+  const [y, m, d] = date.split('-').map(Number), t0 = new Date(y, m - 1, d, 12), k = `${n}|${y}-${m}`;
+  if (sinceCache.has(k)) return sinceCache.get(k)!;
+  const si = (t: Date) => Math.floor((((lonOf(b, t) % 360) + 360) % 360) / 30), s0 = si(t0);
+  let t = t0, lastIn = t0, outDays = 0;
+  for (let i = 0; i < 4000 && outDays < 420; i++) { t = new Date(+t - 10 * 864e5); if (si(t) === s0) { lastIn = t; outDays = 0; } else outDays += 10; }
+  const yr = lastIn.getFullYear(); sinceCache.set(k, yr); return yr;
+}
+
+const PLAIN: Record<string, (s: string) => string> = {
+  Sol: s => `El foco del momento está en ${TRAIT[s]}.`,
+  Luna: s => `El ánimo de hoy pide ${TRAIT[s]}.`,
+  Mercurio: s => `Las conversaciones y los mensajes llegan con ${TRAIT[s]}.`,
+  Venus: s => `En el amor y el placer se busca ${TRAIT[s]}.`,
+  Marte: s => `La energía y las ganas se mueven con ${TRAIT[s]}.`,
+  Júpiter: s => `La buena suerte crece en lo que tiene que ver con ${TRAIT[s]}.`,
+  Saturno: s => `La vida nos pide madurar en ${TRAIT[s]}.`,
+  Urano: s => `Las sorpresas y los cambios llegan por el lado de ${TRAIT[s]}.`,
+  Neptuno: s => `Los sueños colectivos se tiñen de ${TRAIT[s]}.`,
+  Plutón: s => `Una transformación lenta y profunda toca ${TRAIT[s]}.`,
+};
+const RX: Record<string, string> = { Mercurio: 'Está retrógrado: revisa antes de enviar y ten paciencia con la tecnología.', Venus: 'Está retrógrado: viejos amores y viejos gustos vuelven a tocar la puerta.', Marte: 'Está retrógrado: mejor terminar que empezar peleas o proyectos.' };
+/** Una frase sencilla por tránsito. */
+export function transitPlain(p: SkyBody): string {
+  return `${PLAIN[p.n]?.(p.sign) || ''}${p.rx ? ' ' + (RX[p.n] || 'Va retrógrado: es tiempo de revisar más que de empujar.') : ''}`;
+}
+
+/** Lectura general, nada técnica, del cielo de un día. */
+export function skySummary(date: string, s: SkyBody[] | null, N: Placement[], name: string): string[] {
+  if (!s) return [];
+  const g = (n: string) => s.find(p => p.n === n)!;
+  const sun = g('Sol'), moon = g('Luna'), ph = moonPhaseName(date);
+  const out = [`${ph.icon} ${ph.name} en ${moon.sign}. ${ph.tip} Con el Sol en ${sun.sign}, la temporada trae ${TRAIT[sun.sign]}.`];
+  const rx = s.filter(p => p.rx && ['Mercurio', 'Venus', 'Marte'].includes(p.n));
+  if (rx.length) out.push(`${rx.map(p => p.n).join(' y ')} ${rx.length > 1 ? 'van' : 'va'} retrógrado${rx.length > 1 ? 's' : ''}: ${rx.length > 1 ? 'buen momento para revisar' : RX[rx[0].n].split(': ')[1]}`);
+  if (N.length) {
+    const best = s.flatMap(p => p.asp.filter(a => ['Sol', 'Luna', 'Ascendente', 'Venus'].includes(a.np) && a.name !== 'sextil').map(a => ({ p, a }))).sort((u, v) => v.a.score - u.a.score)[0];
+    if (best) {
+      const feel = best.a.name === 'trígono' ? 'te acompaña' : best.a.name === 'conjunción' ? 'se activa fuerte' : 'te reta un poco';
+      out.push(`Para ti, ${name}: ${best.p.n} ${feel} en ${PMEAN[best.a.np]}. ${best.a.name === 'trígono' ? 'Aprovecha la corriente.' : best.a.name === 'conjunción' ? 'Ponle atención, es tema del momento.' : 'No es malo: es una invitación a crecer ahí.'}`);
+    }
+  }
+  return out;
 }

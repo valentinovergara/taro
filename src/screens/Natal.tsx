@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Ctx } from '../App';
 import { chartFrom, chartToPlacements, computeChart, type Birth, type Chart, type ChartBody } from '../lib/natal';
-import { ELEM, natalAdvice, PLANET_GLYPH, PLANETS, SIGN_GLYPH, SIGNS } from '../lib/astro';
+import { ELEM, natalAdvice, PLANET_GLYPH, PLANETS, PMEAN, SIGN_GLYPH, SIGNS, TRAIT } from '../lib/astro';
 import type { Placement } from '../lib/types';
 import { Character } from '../components/Character';
 import { BirthForm } from '../components/BirthForm';
@@ -92,15 +92,22 @@ function Wheel({ chart }: { chart: Chart }) {
     return `M${x0} ${y0} A${ro} ${ro} 0 0 0 ${x1} ${y1} L${x2} ${y2} A${ri} ${ri} 0 0 1 ${x3} ${y3}Z`;
   };
   const planets = chart.bodies.filter(b => b.name !== 'Ascendente').sort((a, b) => a.lon - b.lon);
+  const [tip, setTip] = useState<{ k: string; x: number; y: number; title: string; text: string } | null>(null);
+  const show = (k: string, x: number, y: number, title: string, text: string) => ({
+    onMouseEnter: () => setTip({ k, x, y, title, text }), onFocus: () => setTip({ k, x, y, title, text }),
+    onMouseLeave: () => setTip(t => (t?.k === k ? null : t)), onBlur: () => setTip(t => (t?.k === k ? null : t)),
+    onClick: () => setTip(t => (t?.k === k ? null : { k, x, y, title, text })), tabIndex: 0, role: 'button' as const, 'aria-label': `${title}. ${text}`,
+  });
   const placed: { b: ChartBody; at: number }[] = [];
   planets.forEach(b => { let at = b.lon; const prev = placed[placed.length - 1]; if (prev && norm(at - prev.at) < 11) at = prev.at + 11; placed.push({ b, at }); });
   return (
+    <div className="wheel-wrap">
     <svg viewBox={`0 0 ${S} ${S}`} className="wheel" role="img" aria-label={`Rueda natal: ${chart.bodies.map(b => `${b.name} en ${b.sign}`).join(', ')}`}>
       <defs><radialGradient id="wheelbg"><stop offset="0" stopColor="var(--surface)" /><stop offset="1" stopColor="var(--surface-2)" /></radialGradient></defs>
       <circle cx={c} cy={c} r={R} fill="url(#wheelbg)" stroke="var(--line-strong)" />
       {SIGNS.map((s, i) => {
         const [gx, gy] = pt(i * 30 + 15, (R + r1) / 2);
-        return <g key={s}><path d={arc(i * 30, i * 30 + 30, R, r1)} fill={ELEM_COLOR[ELEM[s]]} opacity=".55" stroke="var(--surface)" strokeWidth="1.5" /><text x={gx} y={gy} textAnchor="middle" dominantBaseline="central" className="w-sign">{SIGN_GLYPH[i]}</text></g>;
+        return <g key={s} className={`w-signg${tip?.k === s ? ' on' : ''}`} {...show(s, gx, gy, `${SIGN_GLYPH[i]} ${s} · ${ELEM[s]}`, `Energía de ${TRAIT[s]}.`)}><path d={arc(i * 30, i * 30 + 30, R, r1)} fill={ELEM_COLOR[ELEM[s]]} stroke="var(--surface)" strokeWidth="1.5" /><text x={gx} y={gy} textAnchor="middle" dominantBaseline="central" className="w-sign">{SIGN_GLYPH[i]}</text></g>;
       })}
       <circle cx={c} cy={c} r={r1} fill="none" stroke="var(--line-strong)" />
       <circle cx={c} cy={c} r={r2} fill="none" stroke="var(--line)" />
@@ -111,10 +118,13 @@ function Wheel({ chart }: { chart: Chart }) {
       })}
       {placed.map(({ b, at }) => {
         const [x, y] = pt(at, rp), [tx, ty] = pt(b.lon, r2), [sx, sy] = pt(b.lon, r2 + 5);
-        return <g key={b.name} className="w-planet"><line x1={tx} y1={ty} x2={sx} y2={sy} stroke="var(--acc-ink)" strokeWidth="2" /><circle cx={x} cy={y} r="11" fill="var(--surface)" stroke="var(--acc)" strokeWidth="1.5" /><text x={x} y={y} textAnchor="middle" dominantBaseline="central">{PLANET_GLYPH[b.name]}</text><title>{`${b.name} en ${b.sign} ${fmtDeg(b.deg)}${b.house ? `, casa ${b.house}` : ''}`}</title></g>;
+        return <g key={b.name} className={`w-planet${tip?.k === b.name ? ' on' : ''}`} style={{ '--pc': ELEM_COLOR[ELEM[b.sign]] } as React.CSSProperties} {...show(b.name, x, y, `${PLANET_GLYPH[b.name]} ${b.name} en ${b.sign} ${fmtDeg(b.deg)}${b.house ? ` · casa ${b.house}` : ''}`, `${PMEAN[b.name].charAt(0).toUpperCase() + PMEAN[b.name].slice(1)}, con ${TRAIT[b.sign]}.`)}><line x1={tx} y1={ty} x2={sx} y2={sy} stroke="var(--acc-ink)" strokeWidth="2" /><circle className="w-dot" cx={x} cy={y} r="12" /><text x={x} y={y} textAnchor="middle" dominantBaseline="central">{PLANET_GLYPH[b.name]}</text></g>;
       })}
       <circle cx={c} cy={c} r="34" fill="var(--acc-soft)" /><text x={c} y={c} textAnchor="middle" dominantBaseline="central" className="w-center">{chart.asc != null ? 'AC ←' : ''}</text>
     </svg>
+    {tip ? <div className="wheel-tip" role="status" style={{ left: `${(tip.x / S) * 100}%`, top: `${(tip.y / S) * 100}%` }}><b>{tip.title}</b><span>{tip.text}</span></div>
+      : <p className="fine wheel-hint">Pasa el cursor o toca un planeta o un signo para leerlo.</p>}
+    </div>
   );
 }
 

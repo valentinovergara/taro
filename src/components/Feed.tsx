@@ -63,7 +63,7 @@ export function FeedCard({ ctx, r, owner }: { ctx: Ctx; r: Reading; owner: Profi
   const { snap } = ctx, meId = snap.me!.id, mine = owner.id === meId;
   const reactions = snap.reactions.filter(x => x.reading_id === r.id);
   const comments = snap.comments.filter(c => c.reading_id === r.id);
-  const [open, setOpen] = useState(comments.length > 0 && comments.length <= 2);
+  const [open, setOpen] = useState(false);
   const [text, setText] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState('');
   const byId = new Map(snap.members.map(m => [m.id, m]));
   const cards = validCards(r);
@@ -82,10 +82,10 @@ export function FeedCard({ ctx, r, owner }: { ctx: Ctx; r: Reading; owner: Profi
   async function del(id: string) { try { await repo.deleteComment(id); await ctx.refresh(); } catch { setErr('No se pudo borrar.'); } }
 
   return (
-    <article className="fcard" style={{ '--who': owner.accent } as React.CSSProperties}>
+    <article className="fcard" id={`r-${r.id}`} style={{ '--who': owner.accent } as React.CSSProperties}>
       <header className="fcard-head">
         <button type="button" className="fcard-who" onClick={() => ctx.go('hoy', owner.handle)} aria-label={`Ver perfil de ${owner.display_name}`}>
-          <Avatar name={owner.display_name} accent={owner.accent} size={40} />
+          <Avatar name={owner.display_name} accent={owner.accent} kind={owner.avatar} size={40} />
           <span><b>{mine ? 'Tú' : owner.display_name}</b><BigThree p={owner} /></span>
         </button>
         <span className="fcard-when">{relDate(r)}{r.visibility === 'private' && <span className="chip chip-lock" title="Solo tú la ves">🔒 Privada</span>}</span>
@@ -103,27 +103,27 @@ export function FeedCard({ ctx, r, owner }: { ctx: Ctx; r: Reading; owner: Profi
           const who = reactions.filter(x => x.emoji === e).map(x => byId.get(x.user_id)?.display_name).filter(Boolean).join(', ');
           return <button key={e} type="button" className={`emoji${on ? ' on' : ''}${n ? ' has' : ''}`} aria-pressed={on} title={who || 'Reaccionar'} onClick={() => react(e)}><span aria-hidden="true">{e}</span>{n > 0 && <b>{n}</b>}</button>;
         })}
-        <button type="button" className="emoji comments-toggle" aria-expanded={open} onClick={() => setOpen(!open)}><Icon name="comment" size={18} />{comments.length > 0 && <b>{comments.length}</b>}</button>
+        <span className="emoji comments-toggle" aria-label={`${comments.length} comentarios`}><Icon name="comment" size={18} />{comments.length > 0 && <b>{comments.length}</b>}</span>
       </div>
 
-      {open && (
-        <div className="fcard-comments">
-          {comments.map(c => {
+      <div className="fcard-comments">
+          {comments.length > 2 && !open && <button type="button" className="link more-cmts" onClick={() => setOpen(true)}>Ver los {comments.length} comentarios</button>}
+          {(open ? comments : comments.slice(-2)).map(c => {
             const a = byId.get(c.user_id);
             return (
               <div key={c.id} className="cmt">
-                <Avatar name={a?.display_name || '?'} accent={a?.accent || '#ccc'} size={28} />
+                <Avatar name={a?.display_name || '?'} accent={a?.accent || '#ccc'} kind={a?.avatar} size={28} />
                 <p><b>{a ? (a.id === meId ? 'Tú' : a.display_name) : 'Alguien'}</b> {c.body}</p>
                 {(c.user_id === meId || mine) && <button type="button" className="icon-btn icon-btn-sm" aria-label="Borrar comentario" onClick={() => del(c.id)}><Icon name="close" size={14} /></button>}
               </div>
             );
           })}
           <form className="cmt-form" onSubmit={send}>
-            <input value={text} maxLength={500} onChange={e => setText(e.target.value)} placeholder={mine ? 'Responde a tus amigos…' : `Escríbele a ${owner.display_name}…`} aria-label="Comentario" />
-            <button className="btn btn-primary btn-sm" disabled={busy || !text.trim()}>Enviar</button>
+            <Avatar name={snap.me!.display_name} accent={snap.me!.accent} kind={snap.me!.avatar} size={30} />
+            <input value={text} maxLength={500} onChange={e => setText(e.target.value)} placeholder={mine ? 'Escribe un comentario…' : `Comenta la tirada de ${owner.display_name}…`} aria-label="Comentario" />
+            <button className="btn btn-primary btn-sm" disabled={busy || !text.trim()} aria-label="Enviar comentario"><Icon name="right" size={18} /></button>
           </form>
         </div>
-      )}
       {err && <p className="auth-err">{err}</p>}
     </article>
   );

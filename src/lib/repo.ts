@@ -80,7 +80,7 @@ export const liveRepo: Repo = {
       sb.from('readings').select('*').order('date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
       sb.from('friendships').select('*'),
       sb.from('comments').select('*').order('created_at').limit(2000),
-      sb.from('reactions').select('reading_id,user_id,emoji').limit(5000),
+      sb.from('reactions').select('reading_id,user_id,emoji,created_at').limit(5000),
       sb.from('private_notes').select('context,meta').eq('user_id', s.user.id).maybeSingle(),
       sb.from('reading_private').select('reading_id,note'),
     ]);
@@ -162,7 +162,7 @@ function seed(): Snapshot {
       R('r3', v.id, ago(4), [['espadas-3'], ['maj-6'], ['bastos-8']], ['Diego', 'Trabajo'], 'Ejemplo de tirada en modo demo.'),
     ],
     comments: [{ id: 'c1', reading_id: 'r4', user_id: v.id, body: '¡Qué buena energía! ☀️', created_at: ago(0) + 'T14:00:00Z' }, { id: 'c2', reading_id: 'r1', user_id: a.id, body: 'Esa Luna en el medio… ojo con las suposiciones 🌙', created_at: ago(0) + 'T15:00:00Z' }],
-    reactions: [{ reading_id: 'r4', user_id: a.id, emoji: '✨' }, { reading_id: 'r4', user_id: v.id, emoji: '💜' }, { reading_id: 'r1', user_id: d.id, emoji: '💜' }],
+    reactions: [{ reading_id: 'r4', user_id: a.id, emoji: '✨', created_at: ago(0) + 'T13:00:00Z' }, { reading_id: 'r4', user_id: v.id, emoji: '💜', created_at: ago(0) + 'T13:30:00Z' }, { reading_id: 'r1', user_id: d.id, emoji: '💜', created_at: ago(0) + 'T16:00:00Z' }],
   };
 }
 function read(): Snapshot { try { const s = localStorage.getItem(LS); if (s) return JSON.parse(s); } catch { /* ignore */ } const s = seed(); write(s); return s; }
@@ -187,7 +187,7 @@ export const demoRepo: Repo = {
   async comment(readingId, body) { mut(s => { s.comments.push({ id: 'c' + Date.now().toString(36), reading_id: readingId, user_id: s.me!.id, body, created_at: new Date().toISOString() }); }); },
   async deleteComment(id) { mut(s => { s.comments = s.comments.filter(c => c.id !== id); }); },
   async toggleReaction(readingId, emoji, on) {
-    mut(s => { s.reactions = s.reactions.filter(x => !(x.reading_id === readingId && x.user_id === s.me!.id && x.emoji === emoji)); if (on) s.reactions.push({ reading_id: readingId, user_id: s.me!.id, emoji }); });
+    mut(s => { s.reactions = s.reactions.filter(x => !(x.reading_id === readingId && x.user_id === s.me!.id && x.emoji === emoji)); if (on) s.reactions.push({ reading_id: readingId, user_id: s.me!.id, emoji, created_at: new Date().toISOString() }); });
   },
   async searchProfiles(q) {
     const s = read(), extra: ProfileHit[] = [{ id: 'demo-luna', handle: 'luna', display_name: 'Luna (ejemplo)', accent: '#94BFF2', sun: 'Piscis', moon: 'Aries', asc_sign: 'Virgo', relation: 'none' }];

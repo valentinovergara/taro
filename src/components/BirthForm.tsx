@@ -5,7 +5,11 @@ import { Icon } from './ui';
 /** Fecha, hora y lugar de nacimiento. El lugar se busca por nombre y trae coordenadas y zona horaria. */
 export function BirthForm({ initial, busy, onSave, onSkip, saveLabel = 'Calcular mi carta' }: { initial?: Birth | null; busy?: boolean; onSave: (b: Birth) => void; onSkip?: () => void; saveLabel?: string }) {
   const [date, setDate] = useState(initial?.date || '');
-  const [time, setTime] = useState(initial?.time || '');
+  const t0 = initial?.time ? initial.time.split(':').map(Number) : null;
+  const [hh, setHh] = useState(t0 ? String(((t0[0] + 11) % 12) + 1) : '');
+  const [mm, setMm] = useState(t0 ? String(t0[1]).padStart(2, '0') : '');
+  const [ampm, setAmpm] = useState<'am' | 'pm'>(t0 && t0[0] >= 12 ? 'pm' : 'am');
+  const time = hh && mm ? `${String((+hh % 12) + (ampm === 'pm' ? 12 : 0)).padStart(2, '0')}:${mm}` : '';
   const [noTime, setNoTime] = useState(initial ? !initial.time : false);
   const [q, setQ] = useState(initial?.place || '');
   const [place, setPlace] = useState<Place | null>(initial ? { name: initial.place, label: initial.place, lat: initial.lat, lon: initial.lon, tz: initial.tz } : null);
@@ -29,7 +33,7 @@ export function BirthForm({ initial, busy, onSave, onSkip, saveLabel = 'Calcular
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!date) { setErr('Falta la fecha.'); return; }
-    if (!noTime && !time) { setErr('Falta la hora, o marca que no la sabes.'); return; }
+    if (!noTime && !time) { setErr('Falta la hora (con sus minutos), o marca que no la sabes.'); return; }
     if (!place) { setErr('Elige tu lugar de nacimiento de la lista.'); return; }
     onSave({ date, time: noTime ? null : time, place: place.label, lat: place.lat, lon: place.lon, tz: place.tz });
   }
@@ -38,7 +42,17 @@ export function BirthForm({ initial, busy, onSave, onSkip, saveLabel = 'Calcular
     <form className="birth-form" onSubmit={submit}>
       <div className="birth-row">
         <label className="field">Fecha<input type="date" required value={date} max={new Date().toISOString().slice(0, 10)} onChange={e => setDate(e.target.value)} /></label>
-        <label className="field">Hora<input type="time" value={time} disabled={noTime} onChange={e => setTime(e.target.value)} /></label>
+        <div className="field"><span>Hora</span>
+          <div className="time12">
+            <select aria-label="Hora" value={hh} disabled={noTime} onChange={e => setHh(e.target.value)}><option value="">--</option>{Array.from({ length: 12 }, (_, i) => <option key={i} value={String(i + 1)}>{i + 1}</option>)}</select>
+            <span aria-hidden="true">:</span>
+            <select aria-label="Minutos" value={mm} disabled={noTime} onChange={e => setMm(e.target.value)}><option value="">--</option>{Array.from({ length: 60 }, (_, i) => <option key={i} value={String(i).padStart(2, '0')}>{String(i).padStart(2, '0')}</option>)}</select>
+            <div className="seg seg-sm ampm" role="group" aria-label="a.m. o p.m.">
+              <button type="button" aria-pressed={ampm === 'am'} disabled={noTime} onClick={() => setAmpm('am')}>a.m.</button>
+              <button type="button" aria-pressed={ampm === 'pm'} disabled={noTime} onClick={() => setAmpm('pm')}>p.m.</button>
+            </div>
+          </div>
+        </div>
       </div>
       <label className="check"><input type="checkbox" checked={noTime} onChange={e => setNoTime(e.target.checked)} /> No sé la hora exacta <span className="fine">(sin hora no hay Ascendente ni casas)</span></label>
       <div className="field place-field">

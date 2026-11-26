@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { auth, repo } from '../lib/repo';
 import type { Snapshot } from '../lib/repo';
+import type { ProfileHit } from '../lib/types';
 import { Character } from '../components/Character';
 import { BirthForm } from '../components/BirthForm';
 import { computeChart, chartToPlacements, type Birth } from '../lib/natal';
@@ -97,7 +98,13 @@ export function Onboarding({ snap, onDone }: { snap: Snapshot; onDone: () => voi
   const [accent, setAccent] = useState(isDiego ? ACCENTS[1][0] : ACCENTS[0][0]);
   const [msg, setMsg] = useState(''); const [busy, setBusy] = useState(false);
   const slug = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24);
-  const step: 'profile' | 'birth' = !me ? 'profile' : 'birth';
+  const needsBirth = !!me && !me.natal?.length && !myMeta.birth && !myMeta.birth_skipped;
+  const step: 'profile' | 'birth' | 'friends' = !me ? 'profile' : needsBirth ? 'birth' : 'friends';
+  const [q, setQ] = useState(''); const [hits, setHits] = useState<ProfileHit[]>([]); const [sent, setSent] = useState<string[]>([]); const [copied, setCopied] = useState(false);
+  const invite = `${window.location.origin}${window.location.pathname}#/agregar/${me?.handle || ''}`;
+  async function search(v: string) { setQ(v); if (v.trim().length < 2) { setHits([]); return; } try { setHits(await repo.searchProfiles(v.trim().replace(/^@/, ''))); } catch { setHits([]); } }
+  async function add(id: string) { try { await repo.requestFriend(id); setSent(x => [...x, id]); } catch { setMsg('No se pudo enviar la solicitud.'); } }
+  async function finish() { setBusy(true); try { await repo.saveMyMeta({ ...myMeta, onboarded: true }); onDone(); } catch { setMsg('No se pudo guardar.'); } setBusy(false); }
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setMsg('');
@@ -117,8 +124,8 @@ export function Onboarding({ snap, onDone }: { snap: Snapshot; onDone: () => voi
   return (
     <div className="auth">
       <div className="auth-card">
-        <ol className="steps" aria-label="Pasos">{['Perfil', 'Nacimiento'].map((s, i) => <li key={s} aria-current={['profile', 'birth'][i] === step ? 'step' : undefined}>{s}</li>)}</ol>
-        <Character kind={step === 'profile' ? 'star' : 'sun'} size={130} className="float" />
+        <ol className="steps" aria-label="Pasos">{['Perfil', 'Nacimiento', 'Amigos'].map((s, i) => <li key={s} aria-current={['profile', 'birth', 'friends'][i] === step ? 'step' : undefined}>{s}</li>)}</ol>
+        <Character kind={step === 'profile' ? 'star' : step === 'birth' ? 'sun' : 'planet'} size={130} className="float" />
         {step === 'profile' && (
           <form onSubmit={saveProfile}>
             <h1 className="h-display">Hola, ¿quién eres?</h1>
@@ -135,6 +142,17 @@ export function Onboarding({ snap, onDone }: { snap: Snapshot; onDone: () => voi
             <h1 className="h-display">¿Cuándo naciste?</h1>
             <p className="sub" style={{ textAlign: 'center' }}>Con tu fecha, hora y lugar calculamos tu carta natal y tus casas.</p>
             <BirthForm busy={busy} onSave={saveBirth} onSkip={() => saveBirth(null)} />
+          </div>
+        )}
+        {step === 'friends' && (
+          <div className="auth-form">
+            <h1 className="h-display">¿Con quién compartes?</h1>
+            <p className="sub" style={{ textAlign: 'center' }}>Agrega a tus amigos para ver sus tiradas y que vean las tuyas. Puedes hacerlo después.</p>
+            <label className="search" style={{ marginTop: 14 }}><input value={q} onChange={e => search(e.target.value)} placeholder="Busca por usuario o nombre" aria-label="Buscar amigos" /></label>
+            {hits.length > 0 && <ul className="people">{hits.map(h => <li key={h.id} className="person"><span className="person-info"><b>{h.display_name}</b><span className="fine">@{h.handle}</span></span>{h.relation === 'friend' ? <span className="chip chip-soft">Amigos</span> : sent.includes(h.id) || h.relation === 'sent' ? <span className="chip">Enviada</span> : <button type="button" className="btn btn-primary btn-sm" onClick={() => add(h.id)}>{h.relation === 'received' ? 'Aceptar' : 'Agregar'}</button>}</li>)}</ul>}
+            <div className="invite"><p className="fine">O comparte tu link:</p><div className="link-row"><code>{invite}</code><button type="button" className="btn btn-sm" onClick={async () => { try { await navigator.clipboard.writeText(invite); setCopied(true); } catch { /* ignore */ } }}>{copied ? 'Copiado' : 'Copiar'}</button></div></div>
+            <button type="button" className="btn btn-primary btn-block" disabled={busy} onClick={finish}>{sent.length ? 'Listo, entrar a Taro' : 'Entrar a Taro'}</button>
+            {!sent.length && <button type="button" className="btn btn-ghost btn-block" disabled={busy} onClick={finish}>Saltar por ahora</button>}
           </div>
         )}
         <p className="auth-err" aria-live="polite">{msg}</p>

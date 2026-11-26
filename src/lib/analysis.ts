@@ -30,30 +30,30 @@ export function analyze(rs: Reading[]): MonthAnalysis {
 }
 
 export function monthAdvice(rs: Reading[], a: MonthAnalysis, p: Profile | null, meta: ProfileMeta = {}): string[] {
-  if (!rs.length || !a.total) return ['Cuando registres tiradas este mes, aquí aparecerá un consejo que las lea en conjunto.'];
+  if (!rs.length || !a.total) return ['Cuando registres tus tiradas de este mes, aquí te cuento lo que dicen juntas.'];
   const out: string[] = [];
   const [tid, tn] = a.ranked[0], top = CARDS[tid], first = CARDS[validCards(rs[0])[0].c];
-  out.push(tn > 1 ? `${top.name} se repite ${tn} veces. ${top.msg}` : `Todavía ninguna carta se repite. Abriste el mes con ${first.name}: ${first.msg.charAt(0).toLowerCase() + first.msg.slice(1)}`);
+  out.push(tn > 1 ? `${top.name} ya te salió ${tn} veces este mes. Cuando una carta insiste así, vale la pena escucharla: ${top.msg.charAt(0).toLowerCase() + top.msg.slice(1)}` : `Ninguna carta se ha repetido todavía, pero abriste el mes con ${first.name}, y eso marca el tono: ${first.msg.charAt(0).toLowerCase() + first.msg.slice(1)}`);
   const dom = (['copas', 'pentaculos', 'espadas', 'bastos'] as const).slice().sort((x, y) => a.suit[y] - a.suit[x])[0];
-  if (a.suit.mayor / a.total >= 0.4) out.push('Casi la mitad de las cartas son Arcanos Mayores: no es un mes de detalles sino de lecciones grandes.');
+  if (a.suit.mayor / a.total >= 0.4) out.push('Casi la mitad de tus cartas son Arcanos Mayores. No es un mes de detalles: la vida te está mostrando lecciones grandes. Tómatelo con calma y con cariño.');
   if (a.suit[dom] > 0) out.push({
-    copas: `El Agua manda: el mes se juega en los vínculos${meta.love ? `. Con ${meta.love}, la pregunta` : ', y la pregunta'} no es tanto qué sienten, sino qué necesitas tú para sentirte correspondido.`,
-    pentaculos: 'La Tierra manda: casa, cuerpo, trabajo y dinero. Ordenar lo concreto te va a ordenar lo emocional.',
-    espadas: 'El Aire manda: mucha cabeza y mucha conversación interna. Hay algo que vale más decir que seguir ensayando en silencio.',
-    bastos: `El Fuego manda: hay energía creativa disponible. Llévala a ${meta.studio || 'un proyecto tuyo'} antes de que se disperse en ansiedad.`,
+    copas: `Las Copas mandan, así que este mes se juega en el corazón${meta.love ? `. Con ${meta.love}, la pregunta` : ', y la pregunta'} no es tanto qué siente el otro, sino qué necesitas tú para sentirte querido.`,
+    pentaculos: 'Los Pentáculos mandan: casa, cuerpo, trabajo y plata. Ordenar lo concreto te va a dar paz por dentro también.',
+    espadas: 'Las Espadas mandan: mucha cabeza y mucha conversación interna. Hay algo que te haría bien decir en voz alta en vez de seguir dándole vueltas.',
+    bastos: `Los Bastos mandan: tienes fuego creativo de sobra. Llévalo a ${meta.studio || 'algo que sea tuyo'} antes de que se convierta en ansiedad.`,
   }[dom]);
   const rec = (meta.recurring || []).filter(id => a.counts[id]);
-  if (rec.length) out.push(`Volvió ${rec.map(id => CARDS[id]?.name).filter(Boolean).join(' y ')}, de tus cartas recurrentes.`);
-  if (a.begins / a.total >= 0.3) out.push(`Muchos comienzos (Ases, Pajes, Caballeros)${meta.patterns?.length ? `. Ojo con tu patrón: ${meta.patterns[0]}` : ''}. Elige un solo inicio y sostenlo hasta fin de mes.`);
-  if (a.royals / a.total >= 0.25) out.push('Reinas y Reyes aparecen seguido: la autoridad que a veces buscas afuera ya es tuya.');
-  if (a.rev / a.total >= 0.3) out.push('Muchas cartas invertidas: energía que va hacia adentro o se está bloqueando.');
+  if (rec.length) out.push(`Volvió ${rec.map(id => CARDS[id]?.name).filter(Boolean).join(' y ')}, una de tus cartas de siempre. Ya sabes lo que te viene a recordar.`);
+  if (a.begins / a.total >= 0.3) out.push(`Te están saliendo muchos comienzos (Ases, Pajes, Caballeros)${meta.patterns?.length ? `. Ojo con tu patrón: ${meta.patterns[0]}` : ''}. Elige uno solo y cuídalo hasta fin de mes.`);
+  if (a.royals / a.total >= 0.25) out.push('Reinas y Reyes aparecen seguido: esa seguridad que a veces buscas afuera ya la tienes tú.');
+  if (a.rev / a.total >= 0.3) out.push('Varias cartas salieron invertidas: hay energía que va hacia adentro o que está algo trabada. Date espacio para sentir sin apurarte.');
   const tags = (p?.tags || []).filter(t => t !== 'Energía general' && !a.tags[t]);
-  if (tags.length && Object.keys(a.tags).length) out.push(`Casi no has preguntado por ${tags.join(', ')}. A veces lo que no consultamos es lo que evitamos mirar.`);
+  if (tags.length && Object.keys(a.tags).length) out.push(`Casi no has preguntado por ${tags.join(', ')}. A veces lo que no consultamos es justo lo que nos cuesta mirar.`);
   const AT: Record<string, string> = { Amor: 'en el amor', Trabajo: 'en el trabajo', Personal: 'en lo personal' };
   for (const ar of ['Amor', 'Trabajo', 'Personal']) {
     const o = a.areas[ar]; if (!o) continue;
     const [k, v] = Object.entries(o).sort((x, y) => y[1] - x[1])[0]; if (!v) continue;
-    out.push(k === 'mayor' ? `Tus cartas de ${ar} son sobre todo Arcanos Mayores: ${AT[ar]} se juega algo grande.` : `${AT[ar].charAt(0).toUpperCase() + AT[ar].slice(1)} domina ${SUITS[k as keyof typeof SUITS].n}: el tema es ${SUITS[k as keyof typeof SUITS].area}.`);
+    out.push(k === 'mayor' ? `Tus cartas de ${ar} son sobre todo Arcanos Mayores: ${AT[ar]} se está moviendo algo importante.` : `${AT[ar].charAt(0).toUpperCase() + AT[ar].slice(1)} te salen sobre todo ${SUITS[k as keyof typeof SUITS].n}: el tema es ${SUITS[k as keyof typeof SUITS].area}.`);
   }
   return out;
 }

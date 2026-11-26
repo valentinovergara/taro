@@ -13,11 +13,14 @@ import { Login, Onboarding, NewPassword } from './screens/Login';
 import { Natal } from './screens/Natal';
 import { Friends } from './screens/Friends';
 import { Character } from './components/Character';
+import { Bell } from './components/Bell';
+import { Tour } from './components/Tour';
+import { BigThree } from './components/Feed';
 
 export type View = 'hoy' | 'mes' | 'historial' | 'cielo' | 'carta' | 'ajustes' | 'amigos';
 const VIEWS: View[] = ['hoy', 'mes', 'historial', 'cielo', 'carta', 'ajustes', 'amigos'];
 const NAV: { v: View; label: string; icon: string }[] = [
-  { v: 'hoy', label: 'Hoy', icon: 'today' }, { v: 'mes', label: 'Mes', icon: 'month' },
+  { v: 'hoy', label: 'Hoy', icon: 'today' }, { v: 'mes', label: 'Ciclos', icon: 'month' },
   { v: 'historial', label: 'Historial', icon: 'history' }, { v: 'cielo', label: 'Cielo', icon: 'sky' },
 ];
 const SIDE_EXTRA: { v: View; label: string; icon: string }[] = [{ v: 'carta', label: 'Carta natal', icon: 'chart' }, { v: 'amigos', label: 'Amigos', icon: 'users' }];
@@ -64,17 +67,19 @@ export default function App() {
   }, [viewed]);
 
   const go = useCallback((view: View, handle?: string) => {
-    const h = handle || viewed?.handle || '';
+    const h = handle || snap?.me?.handle || '';
     window.location.hash = `/${h}${view === 'hoy' ? '' : '/' + view}`;
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [viewed]);
+  }, [snap]);
 
   if (status === 'loading') return <div className="splash"><Character kind="nebula" size={140} className="breathe" /><p>Barajando…</p></div>;
   if (status === 'recovery') return <NewPassword onDone={() => { setStatus('loading'); refresh(); }} />;
   if (status === 'signedout') return <Login />;
   if (status === 'error' || !snap) return <div className="splash"><Character kind="moon" mood="sleepy" size={140} /><p>No pudimos cargar Taro.</p><p className="muted">{err}</p><button className="btn" onClick={refresh}>Reintentar</button></div>;
   const me = snap.me;
-  if (!me || (!me.natal?.length && !snap.myMeta.birth && !snap.myMeta.birth_skipped)) return <Onboarding snap={snap} onDone={refresh} />;
+  const needsBirth = !!me && !me.natal?.length && !snap.myMeta.birth && !snap.myMeta.birth_skipped;
+  const isNew = !!me && !snap.myMeta.onboarded && snap.friendships.length === 0 && !snap.readings.some(r => r.user_id === me.id);
+  if (!me || needsBirth || (isNew && !route.add)) return <Onboarding snap={snap} onDone={refresh} />;
   if (!viewed) return null;
 
   const readings = snap.readings.filter(r => r.user_id === viewed.id).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
@@ -86,35 +91,42 @@ export default function App() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="logo"><span className="logo-orb" aria-hidden="true" />Taro</div>
+        <div className="side-top"><div className="logo"><span className="logo-orb" aria-hidden="true" />Taro</div><Bell ctx={ctx} /></div>
         <nav aria-label="Secciones">
           {[...NAV, ...SIDE_EXTRA].map(n => (
-            <button key={n.v} type="button" className="side-link" aria-current={view === n.v ? 'page' : undefined} onClick={() => go(n.v, n.v === 'amigos' ? me.handle : undefined)}>
+            <button key={n.v} type="button" className="side-link" aria-current={isMine && view === n.v ? 'page' : undefined} onClick={() => go(n.v)}>
               <Icon name={n.icon} />{n.label}{n.v === 'amigos' && incoming > 0 && <span className="badge">{incoming}</span>}
             </button>
           ))}
         </nav>
-        {isMine && <button type="button" className="btn btn-primary side-new" onClick={() => ctx.openSheet()}><Icon name="plus" />Nueva tirada</button>}
+        {<button type="button" className="btn btn-primary side-new" onClick={() => { if (!isMine) go('hoy'); ctx.openSheet(); }}><Icon name="plus" />Nueva tirada</button>}
         <div className="side-foot">
-          <UserMenu ctx={ctx} incoming={incoming} placement="up" />
+          <div data-tour="menu"><UserMenu ctx={ctx} incoming={incoming} placement="up" /></div>
           {repo.mode === 'demo' && <p className="demo-pill">Modo demo</p>}
         </div>
       </aside>
 
       <header className="topbar">
         <button type="button" className="logo logo-btn" onClick={() => go('hoy', me.handle)}><span className="logo-orb" aria-hidden="true" />Taro</button>
-        {!isMine && <button type="button" className="viewing" onClick={() => go('hoy', me.handle)}><Avatar name={viewed.display_name} accent={viewed.accent} size={24} />{viewed.display_name}<Icon name="close" size={14} /></button>}
-        <UserMenu ctx={ctx} incoming={incoming} placement="down" />
+        {!isMine && <button type="button" className="viewing" onClick={() => go('hoy')} aria-label={`Estás viendo a ${viewed.display_name}. Volver a mi Taro`}><Avatar name={viewed.display_name} accent={viewed.accent} kind={viewed.avatar} size={24} />{viewed.display_name}<Icon name="close" size={14} /></button>}
+        <Bell ctx={ctx} />
+        <span data-tour="menu" className="tour-anchor"><UserMenu ctx={ctx} incoming={incoming} placement="down" /></span>
       </header>
 
       <main className="main" id="main">
         {repo.mode === 'demo' && <DemoBar snap={snap} />}
         {!isMine && view !== 'amigos' && (
-          <div className="viewing-bar">
-            <Avatar name={viewed.display_name} accent={viewed.accent} size={28} />
-            <span>Estás viendo a <b>{viewed.display_name}</b></span>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => go('hoy', me.handle)}>Volver a mi Taro</button>
-          </div>
+          <section className="friend-head" style={{ '--who': viewed.accent } as React.CSSProperties} aria-label={`Perfil de ${viewed.display_name}`}>
+            <button type="button" className="btn btn-ghost btn-sm friend-back" onClick={() => go('hoy')}><Icon name="left" size={18} />Volver a mi Taro</button>
+            <div className="friend-id">
+              <Avatar name={viewed.display_name} accent={viewed.accent} kind={viewed.avatar} size={72} />
+              <div><p className="eyebrow">Perfil de amigo</p><h1 className="h-display">{viewed.display_name}</h1><p className="fine">@{viewed.handle}</p><BigThree p={viewed} /></div>
+            </div>
+            <div className="friend-tabs" role="tablist">
+              <button type="button" role="tab" aria-selected={view !== 'carta'} onClick={() => go('hoy', viewed.handle)}>Tiradas</button>
+              <button type="button" role="tab" aria-selected={view === 'carta'} onClick={() => go('carta', viewed.handle)}>Carta natal</button>
+            </div>
+          </section>
         )}
         {view === 'hoy' && <Today ctx={ctx} />}
         {view === 'mes' && <Month ctx={ctx} />}
@@ -126,11 +138,12 @@ export default function App() {
       </main>
 
       <nav className="bottomnav" aria-label="Secciones">
-        {NAV.slice(0, 2).map(n => <NavBtn key={n.v} n={n} active={view === n.v} onClick={() => go(n.v)} />)}
-        <button type="button" className="fab" aria-label="Nueva tirada" onClick={() => { if (!isMine) go('hoy', me.handle); ctx.openSheet(); }}><Icon name="plus" size={26} /></button>
-        {NAV.slice(2).map(n => <NavBtn key={n.v} n={n} active={view === n.v || (n.v === 'cielo' && view === 'carta')} onClick={() => go(n.v)} />)}
+        {NAV.slice(0, 2).map(n => <NavBtn key={n.v} n={n} active={isMine && view === n.v} onClick={() => go(n.v)} />)}
+        <button type="button" className="fab" aria-label="Nueva tirada" onClick={() => { if (!isMine) go('hoy'); ctx.openSheet(); }}><Icon name="plus" size={26} /></button>
+        {NAV.slice(2).map(n => <NavBtn key={n.v} n={n} active={isMine && (view === n.v || (n.v === 'cielo' && view === 'carta'))} onClick={() => go(n.v)} />)}
       </nav>
 
+      {view === 'hoy' && isMine && !snap.myMeta.tour_done && !sheet.open && <Tour ctx={ctx} />}
       {sheet.open && <ReadingSheet ctx={{ ...ctx, viewed: me, isMine: true, meta: snap.myMeta }} reading={sheet.reading} onClose={() => setSheet({ open: false, reading: null })} />}
     </div>
   );
@@ -152,14 +165,14 @@ function UserMenu({ ctx, incoming, placement }: { ctx: Ctx; incoming: number; pl
   return (
     <div className={`usermenu usermenu-${placement}`} ref={ref}>
       <button type="button" className="usermenu-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <Avatar name={me.display_name} accent={me.accent} size={34} />
+        <Avatar name={me.display_name} accent={me.accent} kind={me.avatar} size={34} />
         <span className="usermenu-name">{me.display_name}</span>
         {incoming > 0 && <span className="dot" aria-label={`${incoming} solicitudes de amistad`} />}
         <Icon name="down" size={16} />
       </button>
       {open && (
         <div className="menu" role="menu">
-          <div className="menu-head"><Avatar name={me.display_name} accent={me.accent} size={40} /><span><b>{me.display_name}</b><span className="fine">@{me.handle}</span></span></div>
+          <div className="menu-head"><Avatar name={me.display_name} accent={me.accent} kind={me.avatar} size={40} /><span><b>{me.display_name}</b><span className="fine">@{me.handle}</span></span></div>
           {item('Mi Taro', 'today', () => ctx.go('hoy', me.handle))}
           {item('Amigos', 'users', () => ctx.go('amigos', me.handle), incoming)}
           {item('Carta natal', 'chart', () => ctx.go('carta', me.handle))}

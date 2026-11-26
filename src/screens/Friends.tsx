@@ -67,7 +67,7 @@ export function Friends({ ctx, addHandle }: { ctx: Ctx; addHandle?: string | nul
             <ul className="people">
               {incoming.map(f => { const p = other(f); if (!p) return null; return (
                 <li key={f.id} className="person">
-                  <Avatar name={p.display_name} accent={p.accent} size={40} />
+                  <Avatar name={p.display_name} accent={p.accent} kind={p.avatar} size={40} />
                   <span className="person-info"><b>{p.display_name}</b><BigThree p={p} /></span>
                   <button className="btn btn-primary btn-sm" onClick={() => act(() => repo.acceptFriend(f.id), `Ahora eres amigo de ${p.display_name}.`)}>Aceptar</button>
                   <button className="icon-btn icon-btn-sm" aria-label={`Rechazar a ${p.display_name}`} onClick={() => act(() => repo.removeFriend(f.id), 'Solicitud rechazada.')}><Icon name="close" size={16} /></button>
@@ -80,7 +80,7 @@ export function Friends({ ctx, addHandle }: { ctx: Ctx; addHandle?: string | nul
             {accepted.map(f => { const p = other(f); if (!p) return null; return (
               <li key={f.id} className="person">
                 <button type="button" className="person-main" onClick={() => ctx.go('hoy', p.handle)}>
-                  <Avatar name={p.display_name} accent={p.accent} size={44} />
+                  <Avatar name={p.display_name} accent={p.accent} kind={p.avatar} size={44} />
                   <span className="person-info"><b>{p.display_name}</b><span className="fine">@{p.handle}</span><BigThree p={p} /></span>
                 </button>
                 <FriendMenu onRemove={() => act(() => repo.removeFriend(f.id), `Ya no eres amigo de ${p.display_name}.`)} name={p.display_name} />
@@ -91,7 +91,7 @@ export function Friends({ ctx, addHandle }: { ctx: Ctx; addHandle?: string | nul
             <ul className="people">
               {outgoing.map(f => { const p = other(f); if (!p) return null; return (
                 <li key={f.id} className="person">
-                  <Avatar name={p.display_name} accent={p.accent} size={36} />
+                  <Avatar name={p.display_name} accent={p.accent} kind={p.avatar} size={36} />
                   <span className="person-info"><b>{p.display_name}</b><span className="fine">Esperando respuesta</span></span>
                   <button className="btn btn-ghost btn-sm" onClick={() => act(() => repo.removeFriend(f.id), 'Solicitud cancelada.')}>Cancelar</button>
                 </li>); })}

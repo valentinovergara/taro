@@ -13,7 +13,7 @@ const norm = (x: number) => ((x % 360) + 360) % 360;
 const fmtDeg = (d: number) => `${Math.floor(d)}°${String(Math.floor((d % 1) * 60)).padStart(2, '0')}′`;
 
 export function Natal({ ctx }: { ctx: Ctx }) {
-  const v = ctx.viewed, birth = v.meta?.birth || null;
+  const v = ctx.viewed, birth = ctx.meta.birth || null;
   const chart = useMemo(() => chartFrom(v.natal, birth), [v.natal, birth]);
   const N: Placement[] = v.natal || [];
   const adv = useMemo(() => natalAdvice(N), [N]);
@@ -122,7 +122,7 @@ function BirthEditor({ ctx, birth, open = false }: { ctx: Ctx; birth: Birth | nu
   const [busy, setBusy] = useState(false); const [msg, setMsg] = useState('');
   const save = async (b: Birth) => {
     setBusy(true); setMsg('');
-    try { const me = ctx.snap.me!; await repo.saveProfile({ natal: chartToPlacements(computeChart(b)), meta: { ...(me.meta || {}), birth: b, birth_skipped: false } }); await ctx.refresh(); setMsg('Carta calculada.'); }
+    try { await repo.saveProfile({ natal: chartToPlacements(computeChart(b)) }); await repo.saveMyMeta({ ...ctx.snap.myMeta, birth: b, birth_skipped: false }); await ctx.refresh(); setMsg('Carta calculada.'); }
     catch { setMsg('No se pudo guardar.'); }
     setBusy(false);
   };

@@ -4,13 +4,17 @@ import { CARDS, energyLine, dominantSuit, posOf, validCards, SUIT_LABEL, type Re
 import { Character, SUIT_CHARACTER } from '../components/Character';
 import { TarotCard, Icon } from '../components/ui';
 import { CardDetail } from './CardDetail';
+import { Feed, BigThree } from '../components/Feed';
+import { Recs } from '../components/Recs';
 
 const pd = (s: string) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 export const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 export function Today({ ctx }: { ctx: Ctx }) {
   const { readings, viewed, isMine } = ctx;
-  const r = readings.find(x => x.date === todayIso()) || readings[0] || null;
+  const todayR = readings.find(x => x.date === todayIso()) || null;
+  // En mi home solo muestro la de hoy; en el perfil de un amigo, su última tirada.
+  const r = isMine ? todayR : todayR || readings[0] || null;
   const [detail, setDetail] = useState<{ r: Reading; i: number } | null>(null);
   const date = r ? pd(r.date) : new Date();
   const isToday = r?.date === todayIso();
@@ -24,7 +28,8 @@ export function Today({ ctx }: { ctx: Ctx }) {
       <header className="today-head">
         <p className="eyebrow">{date.toLocaleDateString('es-CO', { weekday: 'long' })}</p>
         <h1 className="hero-date"><span>{date.getDate()}</span> <em>{date.toLocaleDateString('es-CO', { month: 'long' })}</em></h1>
-        <p className="sub">{r ? (isToday ? `La tirada de hoy de ${viewed.display_name}` : `Última tirada de ${viewed.display_name}`) : `${viewed.display_name} aún no tiene tiradas`}</p>
+        <p className="sub">{isMine ? (r ? 'Tu tirada de hoy' : `Hola, ${viewed.display_name}. Aún no haces tu tirada de hoy.`) : r ? (isToday ? `La tirada de hoy de ${viewed.display_name}` : `Última tirada de ${viewed.display_name}`) : `${viewed.display_name} aún no comparte tiradas`}</p>
+        {!isMine && <BigThree p={viewed} />}
       </header>
 
       <div className="today-grid">
@@ -33,8 +38,8 @@ export function Today({ ctx }: { ctx: Ctx }) {
           <div className="mood-copy">
             <span className="chip chip-soft">{suit ? SUIT_LABEL[suit] : 'Sin cartas'}</span>
             <h2>{r ? energyLine(r) : 'Una mesa en blanco.'}</h2>
-            <p>{r ? `${cards.length} cartas · ${(r.tags || []).join(' · ') || 'sin tema'}` : isMine ? 'Reparte tu primera tirada y empieza la bitácora.' : 'Cuando haga su primera tirada aparecerá aquí.'}</p>
-            {!r && isMine && <button className="btn btn-primary" onClick={() => ctx.openSheet()}><Icon name="plus" />Nueva tirada</button>}
+            <p>{r ? `${cards.length} cartas · ${(r.tags || []).join(' · ') || 'sin tema'}` : isMine ? 'Baraja aquí mismo o registra las cartas que te salieron.' : 'Cuando comparta una tirada aparecerá aquí.'}</p>
+            {!r && isMine && <button className="btn btn-primary" onClick={() => ctx.openSheet()}><Icon name="shuffle" />Hacer mi tirada</button>}
           </div>
         </section>
 
@@ -57,17 +62,21 @@ export function Today({ ctx }: { ctx: Ctx }) {
         )}
       </div>
 
-      {r && (
+      {r && (r.note || isMine) && (
         <section className="note-card">
           <div className="note-head">
             <h3>Nota</h3>
             {isMine && <button className="btn btn-ghost btn-sm" onClick={() => ctx.openSheet(r)}><Icon name="edit" size={18} />Editar</button>}
           </div>
-          {r.note ? <p className="note-text">{r.note}</p> : <p className="muted">Sin nota todavía.</p>}
+          {r.note && (isMine || !r.note_private) ? <p className="note-text">{r.note}</p> : <p className="muted">{r.note_private && !isMine ? 'Nota privada.' : 'Sin nota todavía.'}</p>}
+          {isMine && r.note_private && <p className="fine" style={{ marginTop: 8 }}><Icon name="lock" size={14} /> Tu nota es solo para ti.</p>}
         </section>
       )}
 
-      {recent.length > 0 && (
+      {isMine && <Recs ctx={ctx} today={todayR} />}
+      {isMine && <Feed ctx={ctx} />}
+
+      {!isMine && recent.length > 0 && (
         <section className="recent">
           <div className="section-head"><h3>Días anteriores</h3><button className="btn btn-ghost btn-sm" onClick={() => ctx.go('historial')}>Ver todo<Icon name="right" size={18} /></button></div>
           <div className="recent-row">

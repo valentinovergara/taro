@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { repo, auth, isLive, demoActAs, type Snapshot } from './lib/repo';
 import type { Reading } from './lib/tarot';
-import type { Profile } from './lib/types';
+import type { Profile, ProfileMeta } from './lib/types';
 import { Icon, Avatar } from './components/ui';
 import { Today } from './screens/Today';
 import { Month } from './screens/Month';
@@ -11,23 +11,28 @@ import { Settings } from './screens/Settings';
 import { ReadingSheet } from './screens/ReadingSheet';
 import { Login, Onboarding, NewPassword } from './screens/Login';
 import { Natal } from './screens/Natal';
+import { Friends } from './screens/Friends';
 import { Character } from './components/Character';
 
-export type View = 'hoy' | 'mes' | 'historial' | 'cielo' | 'carta' | 'ajustes';
-const VIEWS: View[] = ['hoy', 'mes', 'historial', 'cielo', 'carta', 'ajustes'];
+export type View = 'hoy' | 'mes' | 'historial' | 'cielo' | 'carta' | 'ajustes' | 'amigos';
+const VIEWS: View[] = ['hoy', 'mes', 'historial', 'cielo', 'carta', 'ajustes', 'amigos'];
 const NAV: { v: View; label: string; icon: string }[] = [
   { v: 'hoy', label: 'Hoy', icon: 'today' }, { v: 'mes', label: 'Mes', icon: 'month' },
   { v: 'historial', label: 'Historial', icon: 'history' }, { v: 'cielo', label: 'Cielo', icon: 'sky' },
 ];
-const SIDE_EXTRA: { v: View; label: string; icon: string }[] = [{ v: 'carta', label: 'Carta natal', icon: 'chart' }];
+const SIDE_EXTRA: { v: View; label: string; icon: string }[] = [{ v: 'carta', label: 'Carta natal', icon: 'chart' }, { v: 'amigos', label: 'Amigos', icon: 'users' }];
 
-function parseHash(): { handle: string | null; view: View } {
+/** Rutas: #/  ·  #/<usuario>  ·  #/<usuario>/<vista>  ·  #/agregar/<usuario> */
+function parseHash(): { handle: string | null; view: View; add: string | null } {
   const [, h, v] = window.location.hash.replace(/^#/, '').split('/');
-  return { handle: h || null, view: (VIEWS as string[]).includes(v) ? (v as View) : 'hoy' };
+  if (h === 'agregar') return { handle: null, view: 'amigos', add: v || null };
+  return { handle: h || null, view: (VIEWS as string[]).includes(v) ? (v as View) : 'hoy', add: null };
 }
 
 export interface Ctx {
   snap: Snapshot; viewed: Profile; readings: Reading[]; isMine: boolean;
+  /** Datos privados del perfil que se está viendo (solo si es el mío). */
+  meta: ProfileMeta;
   openSheet: (r?: Reading | null) => void; go: (view: View, handle?: string) => void; refresh: () => Promise<void>;
 }
 
@@ -41,7 +46,7 @@ export default function App() {
   const refresh = useCallback(async () => {
     try {
       if (isLive && !(await auth.session())) { setStatus('signedout'); return; }
-      const s = await repo.load(); setSnap(s); setStatus('ready');
+      const s = await repo.load(); setSnap(s); setStatus(st => (st === 'recovery' ? st : 'ready'));
     } catch (e) { setErr(e instanceof Error ? e.message : 'Error al cargar'); setStatus('error'); }
   }, []);
 
@@ -54,8 +59,8 @@ export default function App() {
   }, [snap, route.handle]);
 
   useEffect(() => {
-    document.documentElement.dataset.who = viewed?.handle === 'diego' ? 'diego' : 'valentino';
-    if (viewed) { document.documentElement.style.setProperty('--acc', viewed.accent); }
+    document.documentElement.dataset.who = viewed?.accent?.toLowerCase() === '#69cda6' ? 'diego' : 'valentino';
+    if (viewed) document.documentElement.style.setProperty('--acc', viewed.accent);
   }, [viewed]);
 
   const go = useCallback((view: View, handle?: string) => {
@@ -68,62 +73,100 @@ export default function App() {
   if (status === 'recovery') return <NewPassword onDone={() => { setStatus('loading'); refresh(); }} />;
   if (status === 'signedout') return <Login />;
   if (status === 'error' || !snap) return <div className="splash"><Character kind="moon" mood="sleepy" size={140} /><p>No pudimos cargar Taro.</p><p className="muted">{err}</p><button className="btn" onClick={refresh}>Reintentar</button></div>;
-  if (!snap.me || !snap.me.circle_id) return <Onboarding snap={snap} onDone={refresh} />;
+  const me = snap.me;
+  if (!me || (!me.natal?.length && !snap.myMeta.birth && !snap.myMeta.birth_skipped)) return <Onboarding snap={snap} onDone={refresh} />;
   if (!viewed) return null;
 
   const readings = snap.readings.filter(r => r.user_id === viewed.id).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-  const isMine = viewed.id === snap.me.id;
-  const ctx: Ctx = { snap, viewed, readings, isMine, openSheet: r => setSheet({ open: true, reading: r || null }), go, refresh };
+  const isMine = viewed.id === me.id;
+  const ctx: Ctx = { snap, viewed, readings, isMine, meta: isMine ? snap.myMeta : {}, openSheet: r => setSheet({ open: true, reading: r || null }), go, refresh };
   const view = route.view;
-
-  const switcher = (
-    <div className="who" role="group" aria-label="Ver tiradas de">
-      {snap.members.map(m => (
-        <button key={m.id} type="button" aria-pressed={m.id === viewed.id} onClick={() => go(view, m.handle)} style={{ '--c': m.accent } as React.CSSProperties}>
-          <Avatar name={m.display_name} accent={m.accent} size={28} /><span>{m.display_name}</span>
-        </button>
-      ))}
-    </div>
-  );
+  const incoming = snap.friendships.filter(f => f.status === 'pending' && f.addressee === me.id).length;
 
   return (
     <div className="shell">
       <aside className="sidebar">
         <div className="logo"><span className="logo-orb" aria-hidden="true" />Taro</div>
-        {switcher}
         <nav aria-label="Secciones">
-          {[...NAV, ...SIDE_EXTRA].map(n => <button key={n.v} type="button" className="side-link" aria-current={view === n.v ? 'page' : undefined} onClick={() => go(n.v)}><Icon name={n.icon} />{n.label}</button>)}
+          {[...NAV, ...SIDE_EXTRA].map(n => (
+            <button key={n.v} type="button" className="side-link" aria-current={view === n.v ? 'page' : undefined} onClick={() => go(n.v, n.v === 'amigos' ? me.handle : undefined)}>
+              <Icon name={n.icon} />{n.label}{n.v === 'amigos' && incoming > 0 && <span className="badge">{incoming}</span>}
+            </button>
+          ))}
         </nav>
         {isMine && <button type="button" className="btn btn-primary side-new" onClick={() => ctx.openSheet()}><Icon name="plus" />Nueva tirada</button>}
         <div className="side-foot">
-          <button type="button" className="side-link" aria-current={view === 'ajustes' ? 'page' : undefined} onClick={() => go('ajustes', snap.me!.handle)}><Icon name="user" />Ajustes</button>
+          <UserMenu ctx={ctx} incoming={incoming} placement="up" />
           {repo.mode === 'demo' && <p className="demo-pill">Modo demo</p>}
         </div>
       </aside>
 
       <header className="topbar">
-        <div className="logo"><span className="logo-orb" aria-hidden="true" />Taro</div>
-        {switcher}
-        <button type="button" className="icon-btn" aria-label="Ajustes" onClick={() => go('ajustes', snap.me!.handle)}><Icon name="user" /></button>
+        <button type="button" className="logo logo-btn" onClick={() => go('hoy', me.handle)}><span className="logo-orb" aria-hidden="true" />Taro</button>
+        {!isMine && <button type="button" className="viewing" onClick={() => go('hoy', me.handle)}><Avatar name={viewed.display_name} accent={viewed.accent} size={24} />{viewed.display_name}<Icon name="close" size={14} /></button>}
+        <UserMenu ctx={ctx} incoming={incoming} placement="down" />
       </header>
 
       <main className="main" id="main">
         {repo.mode === 'demo' && <DemoBar snap={snap} />}
+        {!isMine && view !== 'amigos' && (
+          <div className="viewing-bar">
+            <Avatar name={viewed.display_name} accent={viewed.accent} size={28} />
+            <span>Estás viendo a <b>{viewed.display_name}</b></span>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => go('hoy', me.handle)}>Volver a mi Taro</button>
+          </div>
+        )}
         {view === 'hoy' && <Today ctx={ctx} />}
         {view === 'mes' && <Month ctx={ctx} />}
         {view === 'historial' && <History ctx={ctx} />}
         {view === 'cielo' && <Sky ctx={ctx} />}
         {view === 'carta' && <Natal ctx={ctx} />}
         {view === 'ajustes' && <Settings ctx={ctx} />}
+        {view === 'amigos' && <Friends ctx={{ ...ctx, viewed: me, isMine: true, meta: snap.myMeta }} addHandle={route.add} />}
       </main>
 
       <nav className="bottomnav" aria-label="Secciones">
         {NAV.slice(0, 2).map(n => <NavBtn key={n.v} n={n} active={view === n.v} onClick={() => go(n.v)} />)}
-        <button type="button" className="fab" aria-label="Nueva tirada" disabled={!isMine} onClick={() => ctx.openSheet()}><Icon name="plus" size={26} /></button>
+        <button type="button" className="fab" aria-label="Nueva tirada" onClick={() => { if (!isMine) go('hoy', me.handle); ctx.openSheet(); }}><Icon name="plus" size={26} /></button>
         {NAV.slice(2).map(n => <NavBtn key={n.v} n={n} active={view === n.v || (n.v === 'cielo' && view === 'carta')} onClick={() => go(n.v)} />)}
       </nav>
 
-      {sheet.open && <ReadingSheet ctx={ctx} reading={sheet.reading} onClose={() => setSheet({ open: false, reading: null })} />}
+      {sheet.open && <ReadingSheet ctx={{ ...ctx, viewed: me, isMine: true, meta: snap.myMeta }} reading={sheet.reading} onClose={() => setSheet({ open: false, reading: null })} />}
+    </div>
+  );
+}
+
+function UserMenu({ ctx, incoming, placement }: { ctx: Ctx; incoming: number; placement: 'up' | 'down' }) {
+  const me = ctx.snap.me!;
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => { if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', close); document.addEventListener('keydown', close);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close); };
+  }, [open]);
+  const item = (label: string, icon: string, f: () => void, badge = 0) => (
+    <button type="button" role="menuitem" className="menu-item" onClick={() => { setOpen(false); f(); }}><Icon name={icon} size={20} />{label}{badge > 0 && <span className="badge">{badge}</span>}</button>
+  );
+  return (
+    <div className={`usermenu usermenu-${placement}`} ref={ref}>
+      <button type="button" className="usermenu-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <Avatar name={me.display_name} accent={me.accent} size={34} />
+        <span className="usermenu-name">{me.display_name}</span>
+        {incoming > 0 && <span className="dot" aria-label={`${incoming} solicitudes de amistad`} />}
+        <Icon name="down" size={16} />
+      </button>
+      {open && (
+        <div className="menu" role="menu">
+          <div className="menu-head"><Avatar name={me.display_name} accent={me.accent} size={40} /><span><b>{me.display_name}</b><span className="fine">@{me.handle}</span></span></div>
+          {item('Mi Taro', 'today', () => ctx.go('hoy', me.handle))}
+          {item('Amigos', 'users', () => ctx.go('amigos', me.handle), incoming)}
+          {item('Carta natal', 'chart', () => ctx.go('carta', me.handle))}
+          {item('Ajustes', 'user', () => ctx.go('ajustes', me.handle))}
+          {repo.mode === 'live' && item('Cerrar sesión', 'out', () => auth.signOut())}
+        </div>
+      )}
     </div>
   );
 }
@@ -135,7 +178,7 @@ function NavBtn({ n, active, onClick }: { n: { label: string; icon: string }; ac
 function DemoBar({ snap }: { snap: Snapshot }) {
   return (
     <div className="demobar" role="note">
-      <span>Modo demo: los datos viven solo en este navegador. Conecta Supabase para compartir con Diego.</span>
+      <span>Modo demo: los datos viven solo en este navegador.</span>
       <label>Actuar como <select value={snap.me?.id} onChange={e => demoActAs(e.target.value)}>{snap.members.map(m => <option key={m.id} value={m.id}>{m.display_name}</option>)}</select></label>
     </div>
   );

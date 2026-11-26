@@ -91,14 +91,13 @@ export function NewPassword({ onDone }: { onDone: () => void }) {
 const ACCENTS = [['#B58CE7', 'Lavanda'], ['#69CDA6', 'Menta'], ['#F5A9CE', 'Rosa'], ['#94BFF2', 'Cielo'], ['#F7AC87', 'Durazno']];
 
 export function Onboarding({ snap, onDone }: { snap: Snapshot; onDone: () => void }) {
-  const me = snap.me;
+  const me = snap.me, myMeta = snap.myMeta;
   const isDiego = /#\/diego/.test(window.location.hash);
   const [name, setName] = useState(isDiego ? 'Diego' : ''); const [handle, setHandle] = useState(isDiego ? 'diego' : '');
   const [accent, setAccent] = useState(isDiego ? ACCENTS[1][0] : ACCENTS[0][0]);
-  const [mode, setMode] = useState<'create' | 'join'>('join'); const [circleName, setCircleName] = useState(''); const [code, setCode] = useState('');
   const [msg, setMsg] = useState(''); const [busy, setBusy] = useState(false);
   const slug = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24);
-  const step: 'profile' | 'birth' | 'circle' = !me ? 'profile' : (!me.natal?.length && !me.meta?.birth && !me.meta?.birth_skipped) ? 'birth' : 'circle';
+  const step: 'profile' | 'birth' = !me ? 'profile' : 'birth';
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setMsg('');
@@ -109,24 +108,17 @@ export function Onboarding({ snap, onDone }: { snap: Snapshot; onDone: () => voi
   async function saveBirth(b: Birth | null) {
     setBusy(true); setMsg('');
     try {
-      if (b) await repo.saveProfile({ natal: chartToPlacements(computeChart(b)), meta: { ...(me?.meta || {}), birth: b } });
-      else await repo.saveProfile({ meta: { ...(me?.meta || {}), birth_skipped: true } });
+      if (b) { await repo.saveProfile({ natal: chartToPlacements(computeChart(b)) }); await repo.saveMyMeta({ ...myMeta, birth: b }); }
+      else await repo.saveMyMeta({ ...myMeta, birth_skipped: true });
       onDone();
     } catch { setMsg('No se pudo guardar.'); }
     setBusy(false);
   }
-  async function circle(e: React.FormEvent) {
-    e.preventDefault(); setBusy(true); setMsg('');
-    try { if (mode === 'create') await auth.createCircle(circleName.trim()); else await auth.joinCircle(code); onDone(); }
-    catch { setMsg(mode === 'join' ? 'Código no válido.' : 'No se pudo crear el círculo.'); }
-    setBusy(false);
-  }
-
   return (
     <div className="auth">
       <div className="auth-card">
-        <ol className="steps" aria-label="Pasos">{['Perfil', 'Nacimiento', 'Círculo'].map((s, i) => <li key={s} aria-current={['profile', 'birth', 'circle'][i] === step ? 'step' : undefined}>{s}</li>)}</ol>
-        <Character kind={step === 'profile' ? 'star' : step === 'birth' ? 'sun' : 'planet'} size={130} className="float" />
+        <ol className="steps" aria-label="Pasos">{['Perfil', 'Nacimiento'].map((s, i) => <li key={s} aria-current={['profile', 'birth'][i] === step ? 'step' : undefined}>{s}</li>)}</ol>
+        <Character kind={step === 'profile' ? 'star' : 'sun'} size={130} className="float" />
         {step === 'profile' && (
           <form onSubmit={saveProfile}>
             <h1 className="h-display">Hola, ¿quién eres?</h1>
@@ -144,20 +136,6 @@ export function Onboarding({ snap, onDone }: { snap: Snapshot; onDone: () => voi
             <p className="sub" style={{ textAlign: 'center' }}>Con tu fecha, hora y lugar calculamos tu carta natal y tus casas.</p>
             <BirthForm busy={busy} onSave={saveBirth} onSkip={() => saveBirth(null)} />
           </div>
-        )}
-        {step === 'circle' && (
-          <form onSubmit={circle}>
-            <h1 className="h-display">Tu círculo</h1>
-            <p className="sub" style={{ textAlign: 'center' }}>El círculo es el grupo con quien compartes tiradas.</p>
-            <div className="seg" role="group">
-              <button type="button" aria-pressed={mode === 'join'} onClick={() => setMode('join')}>Tengo un código</button>
-              <button type="button" aria-pressed={mode === 'create'} onClick={() => setMode('create')}>Crear uno nuevo</button>
-            </div>
-            {mode === 'join'
-              ? <label className="field">Código de invitación<input required value={code} onChange={e => setCode(e.target.value.toUpperCase())} /></label>
-              : <label className="field">Nombre del círculo<input value={circleName} placeholder="Valentino y Diego" onChange={e => setCircleName(e.target.value)} /></label>}
-            <button className="btn btn-primary btn-block" disabled={busy}>{mode === 'join' ? 'Unirme' : 'Crear círculo'}</button>
-          </form>
         )}
         <p className="auth-err" aria-live="polite">{msg}</p>
       </div>

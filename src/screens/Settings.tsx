@@ -7,8 +7,8 @@ export function Settings({ ctx }: { ctx: Ctx }) {
   const me = ctx.snap.me!;
   const [name, setName] = useState(me.display_name);
   const [tags, setTags] = useState(me.tags.join(', '));
-  const [love, setLove] = useState(me.meta?.love || '');
-  const [studio, setStudio] = useState(me.meta?.studio || '');
+  const [love, setLove] = useState(ctx.snap.myMeta.love || '');
+  const [studio, setStudio] = useState(ctx.snap.myMeta.studio || '');
   const [context, setContext] = useState(ctx.snap.context);
   const [msg, setMsg] = useState('');
   const [copied, setCopied] = useState('');
@@ -17,7 +17,8 @@ export function Settings({ ctx }: { ctx: Ctx }) {
 
   async function save() {
     try {
-      await repo.saveProfile({ display_name: name.trim() || me.display_name, tags: tags.split(',').map(t => t.trim()).filter(Boolean), meta: { ...(me.meta || {}), love: love.trim(), studio: studio.trim() } });
+      await repo.saveProfile({ display_name: name.trim() || me.display_name, tags: tags.split(',').map(t => t.trim()).filter(Boolean) });
+      await repo.saveMyMeta({ ...ctx.snap.myMeta, love: love.trim(), studio: studio.trim() });
       await repo.saveContext(context);
       await ctx.refresh(); setMsg('Guardado.');
     } catch { setMsg('No se pudo guardar.'); }
@@ -43,20 +44,17 @@ export function Settings({ ctx }: { ctx: Ctx }) {
           <button className="btn btn-primary" onClick={save}>Guardar</button> <span className="fine" aria-live="polite">{msg}</span>
         </section>
         <section className="panel">
-          <h3>Tu círculo</h3>
-          {ctx.snap.circle ? <>
-            <p className="muted">{ctx.snap.circle.name}</p>
-            <p>Para que alguien se una, comparte este código:</p>
-            <p className="code">{ctx.snap.circle.invite_code}</p>
-            <button className="btn btn-ghost btn-sm" onClick={() => copy(ctx.snap.circle!.invite_code, 'code')}><Icon name="link" size={18} />{copied === 'code' ? 'Copiado' : 'Copiar código'}</button>
-          </> : <p className="muted">Sin círculo.</p>}
-          <h3 style={{ marginTop: 24 }}>Links directos</h3>
-          {ctx.snap.members.map(m => (
-            <div key={m.id} className="link-row"><Avatar name={m.display_name} accent={m.accent} size={28} /><code>{base}#/{m.handle}</code><button className="icon-btn" aria-label={`Copiar link de ${m.display_name}`} onClick={() => copy(`${base}#/${m.handle}`, m.id)}><Icon name={copied === m.id ? 'sparkle' : 'link'} size={18} /></button></div>
-          ))}
+          <h3>Amigos</h3>
+          <p className="muted">{ctx.snap.friendships.filter(f => f.status === 'accepted').length} amigos en Taro.</p>
+          <button className="btn btn-ghost btn-sm" onClick={() => ctx.go('amigos', me.handle)}><Icon name="users" size={18} />Ver y agregar amigos</button>
+          <h3 style={{ marginTop: 24 }}>Tu link de invitación</h3>
+          <div className="link-row"><code>{base}#/agregar/{me.handle}</code><button className="icon-btn" aria-label="Copiar link de invitación" onClick={() => copy(`${base}#/agregar/${me.handle}`, 'inv')}><Icon name={copied === 'inv' ? 'sparkle' : 'link'} size={18} /></button></div>
+          <p className="fine">Quien lo abra crea su cuenta y te puede agregar de una vez.</p>
+          <h3 style={{ marginTop: 24 }}>Privacidad</h3>
+          <p className="muted">Cada tirada se comparte con tus amigos, a menos que la marques como "Solo para mí" al guardarla. También puedes compartir las cartas y dejar la nota solo para ti.</p>
           <h3 style={{ marginTop: 24 }}>Carta natal</h3>
-          <p className="muted">{me.meta?.birth ? `${me.meta.birth.date}${me.meta.birth.time ? ' · ' + me.meta.birth.time : ''} · ${me.meta.birth.place}` : 'Aún no registras tu fecha, hora y lugar de nacimiento.'}</p>
-          <button className="btn btn-ghost btn-sm" onClick={() => ctx.go('carta', me.handle)}><Icon name="chart" size={18} />{me.meta?.birth ? 'Ver o editar mi carta' : 'Calcular mi carta natal'}</button>
+          <p className="muted">{ctx.snap.myMeta.birth ? `${ctx.snap.myMeta.birth.date}${ctx.snap.myMeta.birth.time ? ' · ' + ctx.snap.myMeta.birth.time : ''} · ${ctx.snap.myMeta.birth.place}` : 'Aún no registras tu fecha, hora y lugar de nacimiento.'}</p>
+          <button className="btn btn-ghost btn-sm" onClick={() => ctx.go('carta', me.handle)}><Icon name="chart" size={18} />{ctx.snap.myMeta.birth ? 'Ver o editar mi carta' : 'Calcular mi carta natal'}</button>
           {repo.mode === 'live' && <>
             <h3 style={{ marginTop: 24 }}>Contraseña</h3>
             <form onSubmit={savePw} className="pw-form">

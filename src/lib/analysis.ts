@@ -1,5 +1,5 @@
 import { CARDS, SUITS, type Reading, type Suit, posOf, validCards } from './tarot';
-import type { Profile } from './types';
+import type { Profile, ProfileMeta } from './types';
 
 export interface MonthAnalysis {
   counts: Record<string, number>;
@@ -29,9 +29,8 @@ export function analyze(rs: Reading[]): MonthAnalysis {
   return { counts, ranked: Object.entries(counts).sort((a, b) => b[1] - a[1]), suit, tags, areas, total, rev, begins, royals, days: new Set(rs.map(r => r.date)).size };
 }
 
-export function monthAdvice(rs: Reading[], a: MonthAnalysis, p: Profile | null): string[] {
+export function monthAdvice(rs: Reading[], a: MonthAnalysis, p: Profile | null, meta: ProfileMeta = {}): string[] {
   if (!rs.length || !a.total) return ['Cuando registres tiradas este mes, aquí aparecerá un consejo que las lea en conjunto.'];
-  const meta = p?.meta || {};
   const out: string[] = [];
   const [tid, tn] = a.ranked[0], top = CARDS[tid], first = CARDS[validCards(rs[0])[0].c];
   out.push(tn > 1 ? `${top.name} se repite ${tn} veces. ${top.msg}` : `Todavía ninguna carta se repite. Abriste el mes con ${first.name}: ${first.msg.charAt(0).toLowerCase() + first.msg.slice(1)}`);

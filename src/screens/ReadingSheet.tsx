@@ -10,6 +10,8 @@ export function ReadingSheet({ ctx, reading, onClose }: { ctx: Ctx; reading: Rea
   const [cards, setCards] = useState<DrawnCard[]>(() => { const c = reading ? validCards(reading).map(x => ({ ...x })) : []; while (c.length < 3) c.push({ c: '' }); return c; });
   const [tags, setTags] = useState<string[]>(reading?.tags || []);
   const [note, setNote] = useState(reading?.note || '');
+  const [shared, setShared] = useState((reading?.visibility || 'friends') === 'friends');
+  const [notePrivate, setNotePrivate] = useState(!!reading?.note_private);
   const [picking, setPicking] = useState<number | null>(null);
   const [msg, setMsg] = useState(''); const [busy, setBusy] = useState(false); const [arm, setArm] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -37,7 +39,7 @@ export function ReadingSheet({ ctx, reading, onClose }: { ctx: Ctx; reading: Rea
     const cs = cards.filter(x => x.c);
     if (cs.length < 3) { setMsg(mode === 'random' ? 'Primero baraja y reparte.' : 'Elige al menos 3 cartas.'); return; }
     setBusy(true);
-    try { await repo.saveReading({ id: reading?.id, date, cards: cs, positions: reading?.positions ?? null, tags, note: note.trim() }); await ctx.refresh(); onClose(); }
+    try { await repo.saveReading({ id: reading?.id, date, cards: cs, positions: reading?.positions ?? null, tags, note: note.trim(), visibility: shared ? 'friends' : 'private', note_private: shared && notePrivate }); await ctx.refresh(); onClose(); }
     catch { setMsg('No se pudo guardar. Revisa tu conexión.'); }
     setBusy(false);
   }
@@ -95,6 +97,15 @@ export function ReadingSheet({ ctx, reading, onClose }: { ctx: Ctx; reading: Rea
             <div className="chips-row">{ctx.viewed.tags.map(t => <button type="button" key={t} className="chip-btn" aria-pressed={tags.includes(t)} onClick={() => setTags(tags.includes(t) ? tags.filter(x => x !== t) : [...tags, t])}>{t}</button>)}</div>
           </div>
           <label className="field">Nota<textarea rows={5} value={note} onChange={e => setNote(e.target.value)} placeholder="Qué sentiste al verlas, qué pasó hoy…" /></label>
+          <fieldset className="privacy">
+            <legend>¿Quién la ve?</legend>
+            <div className="seg" role="group" aria-label="Visibilidad">
+              <button type="button" aria-pressed={shared} onClick={() => setShared(true)}><Icon name="users" size={18} />Mis amigos</button>
+              <button type="button" aria-pressed={!shared} onClick={() => setShared(false)}><Icon name="lock" size={18} />Solo yo</button>
+            </div>
+            {shared && <label className="check"><input type="checkbox" checked={notePrivate} onChange={e => setNotePrivate(e.target.checked)} /> Compartir las cartas pero dejar mi nota solo para mí</label>}
+            <p className="fine">{shared ? (notePrivate ? 'Tus amigos ven las cartas y pueden reaccionar; tu nota es privada.' : 'Tus amigos ven las cartas y tu nota, y pueden reaccionar y comentar.') : 'Nadie más la verá. No aparece en el feed de tus amigos.'}</p>
+          </fieldset>
           <p className="fine" aria-live="polite">{msg}</p>
           <div className="sheet-actions">
             {reading && <button type="button" className="btn btn-danger" onClick={del}><Icon name="trash" size={18} />{arm ? '¿Seguro? Toca otra vez' : 'Borrar'}</button>}

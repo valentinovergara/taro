@@ -19,6 +19,13 @@ const P: Record<string, ReactNode> = {
   out: <><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" /><path d="M10 8l-4 4 4 4M6 12h10" /></>,
   chart: <><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4" /><path d="M12 3.5v4.5M12 16v4.5M3.5 12H8M16 12h4.5" /></>,
   shuffle: <><path d="M4 7h3c4 0 6 10 10 10h3M4 17h3c1.6 0 2.8-1.4 3.8-3.2M14.2 10.2C15.2 8.4 16.4 7 18 7h2" /><path d="M18 4.5L20.5 7 18 9.5M18 14.5l2.5 2.5-2.5 2.5" /></>,
+  comment: <path d="M4 5.5h16v10H9l-4 3.5v-3.5H4z" />,
+  users: <><circle cx="9" cy="8.5" r="3.2" /><path d="M3 19c.7-3 3-4.8 6-4.8s5.3 1.8 6 4.8" /><circle cx="17" cy="9" r="2.6" /><path d="M16.5 14.3c2.4.2 4 1.7 4.5 4.2" /></>,
+  music: <><path d="M9 18V5l11-2v13" /><circle cx="6.5" cy="18" r="2.5" /><circle cx="17.5" cy="16" r="2.5" /></>,
+  book: <><path d="M4 5c3-1.3 5.5-1 8 .8 2.5-1.8 5-2.1 8-.8v14c-3-1.3-5.5-1-8 .8-2.5-1.8-5-2.1-8-.8z" /><path d="M12 5.8v14" /></>,
+  film: <><rect x="3.5" y="5" width="17" height="14" rx="3" /><path d="M3.5 9.5h17M3.5 14.5h17M8 5v14M16 5v14" /></>,
+  lock: <><rect x="5" y="10.5" width="14" height="9.5" rx="2.5" /><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" /></>,
+  down: <path d="M6 9l6 6 6-6" />,
   link: <><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></>,
 };
 export function Icon({ name, size = 22 }: { name: keyof typeof P | string; size?: number }) {

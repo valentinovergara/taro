@@ -16,7 +16,7 @@ export function Month({ ctx }: { ctx: Ctx }) {
   const prefix = iso(cur.y, cur.m, 1).slice(0, 7);
   const rs = useMemo(() => ctx.readings.filter(r => r.date.startsWith(prefix)).sort((a, b) => (a.date < b.date ? -1 : 1)), [ctx.readings, prefix]);
   const a = useMemo(() => analyze(rs), [rs]);
-  const advice = useMemo(() => monthAdvice(rs, a, ctx.viewed), [rs, a, ctx.viewed]);
+  const advice = useMemo(() => monthAdvice(rs, a, ctx.viewed, ctx.meta), [rs, a, ctx.viewed, ctx.meta]);
   const maxSuit = Math.max(1, ...SUIT_ORDER.map(s => a.suit[s]));
   const domSuit = (SUIT_ORDER.slice().sort((x, y) => a.suit[y] - a.suit[x])[0]) as Suit;
   const step = (d: number) => setCur(c => { const m = c.m + d; return { y: c.y + Math.floor(m / 12), m: ((m % 12) + 12) % 12 }; });

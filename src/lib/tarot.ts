@@ -66,7 +66,11 @@ export interface Reading {
   positions?: string[] | null;
   tags: string[];
   note: string;
+  visibility?: 'friends' | 'private';
+  /** Solo en el cliente: la nota está oculta para los amigos. */
+  note_private?: boolean;
   updated_at?: string;
+  created_at?: string;
 }
 export const posOf = (r: Pick<Reading, 'positions'> | null | undefined, i: number) => (r?.positions || POSITIONS)[i] || POSITIONS[i];
 export const validCards = (r: Reading) => (r.cards || []).filter(x => x && CARDS[x.c]);
